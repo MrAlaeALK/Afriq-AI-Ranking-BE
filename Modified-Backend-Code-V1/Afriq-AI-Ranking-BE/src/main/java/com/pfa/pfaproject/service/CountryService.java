@@ -44,7 +44,6 @@ public class CountryService {
      * @return List of all countries
      */
     public List<Country> findAll() {
-        log.info("Retrieving all countries");
         return countryRepository.findAll();
     }
 
@@ -55,7 +54,6 @@ public class CountryService {
      * @throws CustomException if country is not found
      */
     public Country findById(Long id) {
-        log.info("Finding country with ID: {}", id);
         return countryRepository.findById(id)
                 .orElseThrow(() -> new CustomException("Country not found", HttpStatus.NOT_FOUND));
     }
@@ -67,13 +65,7 @@ public class CountryService {
      * @throws CustomException if country is not found
      */
     public Country findByName(String name) {
-        ValidationUtils.validateNotEmpty(name, "Country name");
-        log.info("Finding country with name: {}", name);
-        Country country = countryRepository.findByName(name);
-        if (country == null) {
-            throw new CustomException("Country not found with name: " + name, HttpStatus.NOT_FOUND);
-        }
-        return country;
+        return countryRepository.findByName(name);
     }
 
     /**
@@ -83,13 +75,7 @@ public class CountryService {
      * @throws CustomException if country is not found
      */
     public Country findByCode(String code) {
-        ValidationUtils.validateNotEmpty(code, "Country code");
-        log.info("Finding country with code: {}", code);
-        Country country = countryRepository.findByCode(code);
-        if (country == null) {
-            throw new CustomException("Country not found with code: " + code, HttpStatus.NOT_FOUND);
-        }
-        return country;
+        return countryRepository.findByCode(code);
     }
 
     /**
@@ -98,25 +84,8 @@ public class CountryService {
      * @return List of countries in the region
      */
     public List<Country> findByRegion(String region) {
-        ValidationUtils.validateNotEmpty(region, "Region");
-        log.info("Finding countries in region: {}", region);
-        List<Country> countries = countryRepository.findByRegion(region);
-        if (countries.isEmpty()) {
-            log.info("No countries found in region: {}", region);
-        }
-        return countries;
+        return countryRepository.findByRegion(region);
     }
-
-    /**
-     * Checks if a country exists by ID.
-     * @param id The country ID to check
-     * @return true if exists, false otherwise
-     */
-    public boolean existsById(Long id) {
-        return countryRepository.existsById(id);
-    }
-
-    // ========== COMMAND METHODS ==========
 
     /**
      * Saves a country entity to the database.
@@ -126,8 +95,6 @@ public class CountryService {
      */
     @Transactional
     public Country save(Country country) {
-        validateCountry(country);
-        log.info("Saving country: {}", country.getName());
         return countryRepository.save(country);
     }
 
@@ -141,7 +108,6 @@ public class CountryService {
         if (!countryRepository.existsById(id)) {
             throw new CustomException("Cannot delete: Country not found", HttpStatus.NOT_FOUND);
         }
-        log.info("Deleting country with ID: {}", id);
         countryRepository.deleteById(id);
     }
 
@@ -171,34 +137,6 @@ public class CountryService {
         country.addScore(score);
         log.info("Added score to country: {}", country.getName());
         return countryRepository.save(country);
-    }
-
-    // ========== VALIDATION METHODS ==========
-
-    /**
-     * Validates country data before saving.
-     * @param country The country to validate
-     * @throws CustomException if validation fails
-     */
-    private void validateCountry(Country country) {
-        if (country == null) {
-            throw new CustomException("Country data is required", HttpStatus.BAD_REQUEST);
-        }
-
-        ValidationUtils.validateNotEmpty(country.getName(), "Country name");
-        ValidationUtils.validateNotEmpty(country.getCode(), "Country code");
-        ValidationUtils.validateNotEmpty(country.getRegion(), "Country region");
-
-        // Check for duplicate entries in DB
-        Country existingCountry = countryRepository.findByName(country.getName());
-        if (existingCountry != null && (country.getId() == null || !country.getId().equals(existingCountry.getId()))) {
-            throw new CustomException("Country with this name already exists", HttpStatus.CONFLICT);
-        }
-
-        // Validate code format (uppercase, 2-3 letters)
-        if (!country.getCode().matches("^[A-Z]{2,3}$")) {
-            throw new CustomException("Country code must be 2-3 uppercase letters", HttpStatus.BAD_REQUEST);
-        }
     }
 }
 

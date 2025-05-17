@@ -42,11 +42,6 @@ public class IndicatorController {
                 .body(ResponseWrapper.success(indicatorService.findAll()));
     }
 
-//    @PostMapping("/addIndicator")
-//    public Indicator addIndicator(@RequestBody Indicator indicator) {
-//        return indicatorService.save(indicator);
-//    }
-
     /**
      * Retrieves a specific indicator by ID.
      * 
@@ -72,18 +67,5 @@ public class IndicatorController {
             @PathVariable @Min(value = 1, message = "Category ID must be positive") Long categoryId) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseWrapper.success(indicatorService.findByCategory(categoryId)));
-    }
-    
-    /**
-     * Retrieves indicators by normalization type.
-     * 
-     * @param normalizationType The normalization type to filter by
-     * @return List of indicators with the specified normalization type
-     */
-    @GetMapping("/normalization/{normalizationType}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> getIndicatorsByNormalizationType(@PathVariable String normalizationType) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseWrapper.success(indicatorService.findByNormalizationType(normalizationType)));
     }
 }

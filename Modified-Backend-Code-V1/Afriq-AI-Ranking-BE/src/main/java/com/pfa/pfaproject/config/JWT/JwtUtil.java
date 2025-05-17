@@ -32,15 +32,7 @@ public class JwtUtil {
 
     @Value("${jwt.expirationtime}")
     private Long accessTokenExpirationTime;
-    
-    @Value("${jwt.refresh.expirationtime:604800000}") // Default: 7 days
-    private Long refreshTokenExpirationTime;
-    
-    @Value("${jwt.issuer:afriq-ai-ranking}")
-    private String issuer;
-    
-    @Value("${jwt.audience:admin-users}")
-    private String audience;
+
     
     /**
      * Gets the secret key for JWT signing from the base64-encoded configuration property.
@@ -61,18 +53,6 @@ public class JwtUtil {
         log.debug("Generating access token for user: {}", subject);
         String token = createToken(subject, authorities, accessTokenExpirationTime, "ACCESS");
         log.info("Access token generated successfully for user: {}", subject);
-        return token;
-    }
-    
-    /**
-     * Generates a refresh token for a user.
-     * @param subject The username or subject identifier
-     * @return JWT refresh token string
-     */
-    public String generateRefreshToken(String subject) {
-        log.debug("Generating refresh token for user: {}", subject);
-        String token = createToken(subject, null, refreshTokenExpirationTime, "REFRESH");
-        log.info("Refresh token generated successfully for user: {}", subject);
         return token;
     }
     
@@ -102,8 +82,6 @@ public class JwtUtil {
                     .issuedAt(now)
                     .expiration(expiryDate)
                     .id(UUID.randomUUID().toString()) // Add JWT ID for uniqueness
-                    .issuer(issuer)
-                    .audience().add(audience).and()
                     .and()
                     .signWith(getSecretKey())
                     .compact();
@@ -189,21 +167,6 @@ public class JwtUtil {
     }
     
     /**
-     * Checks if a refresh token is valid.
-     * @param token The refresh token to validate
-     * @return true if token is a valid refresh token, false otherwise
-     */
-    public boolean validateRefreshToken(String token) {
-        try {
-            final String tokenType = extractTokenType(token);
-            return !isTokenExpired(token) && "REFRESH".equals(tokenType);
-        } catch (Exception e) {
-            log.error("Refresh token validation error", e);
-            return false;
-        }
-    }
-    
-    /**
      * Extracts the token type from a JWT token.
      * @param token The JWT token
      * @return The token type (ACCESS or REFRESH)
@@ -220,28 +183,12 @@ public class JwtUtil {
      */
     public boolean isTokenExpired(String token) {
         try {
-            final Date expiration = extractAllClaims(token).getExpiration();
-            return expiration.before(new Date());
+            return extractAllClaims(token).getExpiration().before(new Date());
         } catch (ExpiredJwtException e) {
             return true;
         } catch (Exception e) {
             log.error("Error checking token expiration", e);
             return true;
-        }
-    }
-    
-    /**
-     * Gets the remaining validity time of a token in seconds.
-     * @param token The JWT token
-     * @return Remaining seconds until expiration, or 0 if expired/invalid
-     */
-    public long getTokenRemainingValiditySeconds(String token) {
-        try {
-            final Date expiration = extractAllClaims(token).getExpiration();
-            return Math.max(0, (expiration.getTime() - Instant.now().toEpochMilli()) / 1000);
-        } catch (Exception e) {
-            log.error("Error calculating token remaining validity", e);
-            return 0;
         }
     }
 }

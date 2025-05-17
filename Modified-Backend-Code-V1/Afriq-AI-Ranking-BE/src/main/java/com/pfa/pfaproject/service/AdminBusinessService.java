@@ -36,6 +36,7 @@ public class AdminBusinessService {
     private final AdminService adminService;
     private final CountryService countryService;
     private final IndicatorService indicatorService;
+    private final IndicatorCategoryService indicatorCategoryService;
     private final ScoreService scoreService;
     private final RankService rankService;
     private final JwtUtil jwtUtil;
@@ -47,10 +48,8 @@ public class AdminBusinessService {
      * @throws CustomException if admin with username or email already exists
      */
     public String register(RegisterDTO adminToRegisterDTO) {
-        log.info("Attempting to register new admin: {}", adminToRegisterDTO.username());
 
         if (adminService.existsByUsernameOrEmail(adminToRegisterDTO.username(), adminToRegisterDTO.email())) {
-            log.warn("Registration failed - username or email already exists: {}", adminToRegisterDTO.username());
             throw new CustomException("Admin already exists", HttpStatus.CONFLICT);
         }
 
@@ -63,7 +62,6 @@ public class AdminBusinessService {
                 .build();
 
         adminService.save(admin);
-        log.info("Successfully registered new admin: {}", admin.getUsername());
 
         return jwtUtil.generateToken(admin.getUsername(), admin.getAuthorities());
     }
@@ -75,23 +73,19 @@ public class AdminBusinessService {
      * @throws CustomException if credentials are invalid
      */
     public String login(LoginDTO adminToLogin) {
-        log.info("Attempting login for user: {}", adminToLogin.usernameOrEmail());
 
         Admin admin = ValidationUtils.isValidEmail(adminToLogin.usernameOrEmail()) ?
                 adminService.findByEmail(adminToLogin.usernameOrEmail()) :
                 adminService.findByUsername(adminToLogin.usernameOrEmail());
 
         if (admin == null) {
-            log.warn("Login failed - user not found: {}", adminToLogin.usernameOrEmail());
             throw new CustomException("Username or password is incorrect", HttpStatus.UNAUTHORIZED);
         }
 
         if (!passwordEncoder.matches(adminToLogin.password(), admin.getPassword())) {
-            log.warn("Login failed - incorrect password for user: {}", adminToLogin.usernameOrEmail());
             throw new CustomException("Username or password is incorrect", HttpStatus.UNAUTHORIZED);
         }
 
-        log.info("Login successful for user: {}", admin.getUsername());
         return jwtUtil.generateToken(admin.getUsername(), admin.getAuthorities());
     }
 
@@ -102,17 +96,13 @@ public class AdminBusinessService {
      * @throws CustomException if country already exists
      */
     public Country addCountry(Country country) {
-        ValidationUtils.validateNotEmpty(country.getName(), "Country name");
-        log.info("Attempting to add new country: {}", country.getName());
 
         Country existingCountry = countryService.findByName(country.getName());
         if (existingCountry != null) {
-            log.warn("Cannot add country - already exists: {}", country.getName());
             throw new CustomException("Country already exists", HttpStatus.CONFLICT);
         }
 
         Country savedCountry = countryService.save(country);
-        log.info("Successfully added new country: {}", savedCountry.getName());
         return savedCountry;
     }
 
@@ -123,64 +113,48 @@ public class AdminBusinessService {
      * @throws CustomException if indicator already exists
      */
     public Indicator addIndicator(Indicator indicator) {
-        ValidationUtils.validateNotEmpty(indicator.getName(), "Indicator name");
-        log.info("Attempting to add new indicator: {}", indicator.getName());
-
         Indicator existingIndicator = indicatorService.findByName(indicator.getName());
         if (existingIndicator != null) {
-            log.warn("Cannot add indicator - already exists: {}", indicator.getName());
             throw new CustomException("Indicator already exists", HttpStatus.CONFLICT);
         }
 
         Indicator savedIndicator = indicatorService.save(indicator);
-        log.info("Successfully added new indicator: {}", savedIndicator.getName());
         return savedIndicator;
     }
 
     /**
+     * Adds a new indicator category to the system.
+     * @param indicatorCategory Indicator entity to add
+     * @return The saved indicatorCategory
+     * @throws CustomException if category already exists
+     */
+    public IndicatorCategory addIndicatorCategory(IndicatorCategory indicatorCategory) {
+        IndicatorCategory existingIndicatorCategory = indicatorCategoryService.findByName(indicatorCategory.getName());
+        if (existingIndicatorCategory != null) {
+            throw new CustomException("Category already exists", HttpStatus.CONFLICT);
+        }
+
+        IndicatorCategory savedIndicatorCategory = indicatorCategoryService.save(indicatorCategory);
+        return savedIndicatorCategory;
+    }
+
+    /**
      * Adds a new score for a country on a specific indicator.
-     * @param dto DTO containing score details
-     * @return The saved score with ID
+     * @param addOrUpdateScoreDTO DTO containing score details
+     * @return The saved score
      * @throws CustomException if score already exists or references invalid entities
      */
-    public Score addScore(AddOrUpdateScoreDTO dto) {
-        log.info("Attempting to add score for country ID: {}, indicator ID: {}, year: {}",
-                dto.countryId(), dto.indicatorId(), dto.year());
-
-        ValidationUtils.validateYear(dto.year());
-        
-        Score existingScore = null;
-        try {
-            existingScore = scoreService.findByCountryIdAndIndicatorIdAndYear(
-                    dto.countryId(), dto.indicatorId(), dto.year());
-        } catch (CustomException e) {
-            if (e.getStatus() != HttpStatus.NOT_FOUND) {
-                throw e;
-            }
+    public Score addScore(AddOrUpdateScoreDTO addOrUpdateScoreDTO){
+        if(scoreService.findByCountryIdAndIndicatorIdAndYear(addOrUpdateScoreDTO.countryId(), addOrUpdateScoreDTO.indicatorId(), addOrUpdateScoreDTO.year()) == null) {
+            Score newScore = Score.builder()
+                    .score(addOrUpdateScoreDTO.score())
+                    .year(addOrUpdateScoreDTO.year())
+                    .country(countryService.findById(addOrUpdateScoreDTO.countryId()))
+                    .indicator(indicatorService.findById(addOrUpdateScoreDTO.indicatorId()))
+                    .build();
+            return scoreService.save(newScore);
         }
-
-        if (existingScore != null) {
-            log.warn("Cannot add score - already exists for country ID: {}, indicator ID: {}, year: {}",
-                    dto.countryId(), dto.indicatorId(), dto.year());
-            throw new CustomException("Score already exists", HttpStatus.CONFLICT);
-        }
-
-        // Verify country and indicator exist
-        Country country = countryService.findById(dto.countryId());
-        Indicator indicator = indicatorService.findById(dto.indicatorId());
-
-        Score newScore = Score.builder()
-                .score(dto.score())
-                .year(dto.year())
-                .country(country)
-                .indicator(indicator)
-                .build();
-
-        Score savedScore = scoreService.save(newScore);
-        log.info("Successfully added score for country: {}, indicator: {}, year: {}",
-                country.getName(), indicator.getName(), dto.year());
-
-        return savedScore;
+        throw new CustomException("Score already exists", HttpStatus.CONFLICT);
     }
 
     /**
@@ -190,25 +164,16 @@ public class AdminBusinessService {
      * @throws CustomException if score doesn't exist
      */
     public Score updateScore(AddOrUpdateScoreDTO dto) {
-        log.info("Attempting to update score for country ID: {}, indicator ID: {}, year: {}",
-                dto.countryId(), dto.indicatorId(), dto.year());
-
-        ValidationUtils.validateYear(dto.year());
         
         Score score = scoreService.findByCountryIdAndIndicatorIdAndYear(
                 dto.countryId(), dto.indicatorId(), dto.year());
 
         if (score == null) {
-            log.warn("Cannot update score - not found for country ID: {}, indicator ID: {}, year: {}",
-                    dto.countryId(), dto.indicatorId(), dto.year());
             throw new CustomException("Score does not exist", HttpStatus.NOT_FOUND);
         }
 
         score.setScore(dto.score());
         Score updatedScore = scoreService.save(score);
-
-        log.info("Successfully updated score for country ID: {}, indicator ID: {}, year: {}",
-                dto.countryId(), dto.indicatorId(), dto.year());
 
         return updatedScore;
     }
@@ -220,22 +185,10 @@ public class AdminBusinessService {
      * @throws CustomException if rank already exists or country not found
      */
     public Rank generateFinalScoreForCountry(GenerateFinalScoreForCountryDTO dto) {
-        log.info("Generating final score for country ID: {}, year: {}", dto.countryId(), dto.year());
-
-        ValidationUtils.validateYear(dto.year());
         
-        Rank existingRank = null;
-        try {
-            existingRank = rankService.findByCountryIdAndYear(dto.countryId(), dto.year());
-        } catch (CustomException e) {
-            if (e.getStatus() != HttpStatus.NOT_FOUND) {
-                throw e;
-            }
-        }
+        Rank existingRank = rankService.findByCountryIdAndYear(dto.countryId(), dto.year());
 
         if (existingRank != null) {
-            log.warn("Cannot generate final score - rank already exists for country ID: {}, year: {}",
-                    dto.countryId(), dto.year());
             throw new CustomException("Rank already exists", HttpStatus.CONFLICT);
         }
 
@@ -246,12 +199,10 @@ public class AdminBusinessService {
                 .country(country)
                 .year(dto.year())
                 .finalScore(finalScore)
-                .rank(0) // Initial rank, will be updated later
+                .rank(1) // Initial rank, will be updated later
                 .build();
 
         Rank savedRank = rankService.save(newRank);
-        log.info("Successfully generated final score for country: {}, year: {}, score: {}",
-                country.getName(), dto.year(), finalScore);
 
         return savedRank;
     }
@@ -262,9 +213,6 @@ public class AdminBusinessService {
      * @return List of generated rank entries
      */
     public List<Rank> generateFinalScore(GenerateRankOrFinalScoreDTO dto) {
-        ValidationUtils.validateYear(dto.year());
-        
-        log.info("Generating final scores for all countries for year: {}", dto.year());
 
         List<Country> countries = countryService.findAll();
         List<Rank> finalScores = new ArrayList<>();
@@ -279,7 +227,6 @@ public class AdminBusinessService {
                     // If rank already exists, get the existing one
                     Rank existingRank = rankService.findByCountryIdAndYear(country.getId(), dto.year());
                     finalScores.add(existingRank);
-                    log.info("Using existing rank for country: {}, year: {}", country.getName(), dto.year());
                 } else {
                     // Log other errors but continue processing other countries
                     log.error("Error generating final score for country: {}, year: {}, error: {}",
@@ -288,7 +235,6 @@ public class AdminBusinessService {
             }
         }
 
-        log.info("Successfully generated final scores for {} countries for year: {}", finalScores.size(), dto.year());
         return finalScores;
     }
 
@@ -298,9 +244,6 @@ public class AdminBusinessService {
      * @return List of countries ordered by rank
      */
     public List<Country> generateRanking(GenerateRankOrFinalScoreDTO dto) {
-        ValidationUtils.validateYear(dto.year());
-        
-        log.info("Generating rankings for year: {}", dto.year());
 
         // Ensure all countries have final scores
         generateFinalScore(dto);
@@ -315,7 +258,6 @@ public class AdminBusinessService {
             rankedCountries.add(rank.getCountry());
         }
 
-        log.info("Successfully generated rankings for {} countries for year: {}", rankedCountries.size(), dto.year());
         return rankedCountries;
     }
 }

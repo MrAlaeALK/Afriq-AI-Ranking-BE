@@ -77,7 +77,7 @@ public class Indicator {
      * Examples: "AI Research Publications", "AI Startups per Capita"
      */
     @NotBlank(message = "Indicator name is required")
-    @Size(min = 2, max = 100, message = "Indicator name must be between 2 and 100 characters")
+    @Size(min = 5, max = 100, message = "Indicator name must be between 5 and 100 characters")
     @Column(unique = true, nullable = false)
     private String name;
     
@@ -85,8 +85,9 @@ public class Indicator {
      * Detailed explanation of what the indicator measures and how.
      * Provides transparency about the data collection and interpretation.
      */
+    @NotBlank(message = "Indicator description is required")
     @Size(max = 1000, message = "Description cannot exceed 1000 characters")
-    @Column(length = 1000)
+    @Column(length = 1000, nullable = false)
     private String description;
     
     /**
@@ -101,9 +102,9 @@ public class Indicator {
     /**
      * The relative importance of this indicator in the overall country ranking.
      * Higher weights give the indicator more influence on the final score.
-     * Scale: 1 (minimal importance) to 100 (highest importance)
+     * Scale: 0 (minimal importance) to 100 (highest importance)
      */
-    @Min(value = 1, message = "Weight must be at least 1")
+    @Min(value = 0, message = "Weight must be at least 0")
     @Max(value = 100, message = "Weight cannot exceed 100")
     @Column(nullable = false)
     private int weight;
@@ -112,7 +113,7 @@ public class Indicator {
      * All scores for this indicator across different countries and years.
      */
     @OneToMany(mappedBy = "indicator", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    //@JsonManagedReference
     @Builder.Default
     private List<Score> scores = new ArrayList<>();
 
@@ -123,7 +124,7 @@ public class Indicator {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    @JsonBackReference(value = "category")
+    //@JsonBackReference(value = "category")
     private IndicatorCategory category;
     
     /**

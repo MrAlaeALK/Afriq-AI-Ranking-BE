@@ -67,7 +67,6 @@ public class AdminService implements UserDetailsService {
      * @return Admin if found, null otherwise
      */
     public Admin findByUsername(String username) {
-        ValidationUtils.validateNotEmpty(username, "Username");
         log.info("Finding admin by username: {}", username);
         return adminRepository.findByUsername(username);
     }
@@ -78,10 +77,6 @@ public class AdminService implements UserDetailsService {
      * @return Admin if found, null otherwise
      */
     public Admin findByEmail(String email) {
-        ValidationUtils.validateNotEmpty(email, "Email");
-        if (!ValidationUtils.isValidEmail(email)) {
-            throw new CustomException("Invalid email format", HttpStatus.BAD_REQUEST);
-        }
         log.info("Finding admin by email: {}", email);
         return adminRepository.findByEmail(email);
     }
@@ -93,8 +88,6 @@ public class AdminService implements UserDetailsService {
      * @return Admin if found, null otherwise
      */
     public Admin findByUsernameOrEmail(String username, String email) {
-        ValidationUtils.validateNotEmpty(username, "Username");
-        ValidationUtils.validateNotEmpty(email, "Email");
         log.info("Finding admin by username or email: {}/{}", username, email);
         return adminRepository.findByUsernameOrEmail(username, email);
     }
@@ -106,8 +99,6 @@ public class AdminService implements UserDetailsService {
      * @return true if exists, false otherwise
      */
     public boolean existsByUsernameOrEmail(String username, String email) {
-        ValidationUtils.validateNotEmpty(username, "Username");
-        ValidationUtils.validateNotEmpty(email, "Email");
         return adminRepository.existsByUsernameOrEmail(username, email);
     }
 
@@ -119,9 +110,7 @@ public class AdminService implements UserDetailsService {
      * @return The saved admin with ID
      * @throws CustomException if validation fails
      */
-    @Transactional
     public Admin save(Admin admin) {
-        validateAdmin(admin);
         log.info("Saving admin: {}", admin.getUsername());
         return adminRepository.save(admin);
     }
@@ -131,7 +120,6 @@ public class AdminService implements UserDetailsService {
      * @param id The admin ID to delete
      * @throws CustomException if admin is not found
      */
-    @Transactional
     public void delete(Long id) {
         // Check if admin exists before deletion
         if (!adminRepository.existsById(id)) {
@@ -151,45 +139,7 @@ public class AdminService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        ValidationUtils.validateNotEmpty(username, "Username");
-        
-        Admin admin = adminRepository.findByUsername(username);
-        if (admin == null) {
-            log.warn("Failed login attempt for username: {}", username);
-            throw new UsernameNotFoundException("User not found: " + username);
-        }
         log.info("User authenticated: {}", username);
-        return admin;
-    }
-
-    // ========== VALIDATION METHODS ==========
-    
-    /**
-     * Validates admin data before saving.
-     * @param admin The admin to validate
-     * @throws CustomException if validation fails
-     */
-    private void validateAdmin(Admin admin) {
-        if (admin == null) {
-            throw new CustomException("Admin data is required", HttpStatus.BAD_REQUEST);
-        }
-
-        ValidationUtils.validateNotEmpty(admin.getUsername(), "Username");
-        ValidationUtils.validateNotEmpty(admin.getEmail(), "Email");
-        
-        // Validate email format
-        if (!ValidationUtils.isValidEmail(admin.getEmail())) {
-            throw new CustomException("Invalid email format", HttpStatus.BAD_REQUEST);
-        }
-        
-        // Check for duplicate username or email
-        if (admin.getId() == null && existsByUsernameOrEmail(admin.getUsername(), admin.getEmail())) {
-            throw new CustomException("Username or email already exists", HttpStatus.CONFLICT);
-        }
-        
-        // Ensure password is set for new users
-        if (admin.getId() == null && (admin.getPassword() == null || admin.getPassword().isEmpty())) {
-            throw new CustomException("Password is required for new admin accounts", HttpStatus.BAD_REQUEST);
-        }
+        return adminRepository.findByUsername(username);
     }
 }

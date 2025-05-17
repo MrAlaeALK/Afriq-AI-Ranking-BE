@@ -27,7 +27,6 @@ public class IndicatorCategoryService {
      * @return List of all indicator categories
      */
     public List<IndicatorCategory> findAll() {
-        log.info("Retrieving all indicator categories");
         return indicatorCategoryRepository.findAllByOrderByDisplayOrderAsc();
     }
 
@@ -38,7 +37,6 @@ public class IndicatorCategoryService {
      * @throws CustomException if indicator category is not found
      */
     public IndicatorCategory findById(Long id) {
-        log.info("Finding indicator category with ID: {}", id);
         return indicatorCategoryRepository.findById(id)
                 .orElseThrow(() -> new CustomException("Indicator category not found", HttpStatus.NOT_FOUND));
     }
@@ -49,33 +47,8 @@ public class IndicatorCategoryService {
      * @return The saved indicator category with ID
      * @throws CustomException if validation fails
      */
-    @Transactional
     public IndicatorCategory save(IndicatorCategory category) {
-        validateCategory(category);
-        log.info("Saving indicator category: {}", category.getName());
         return indicatorCategoryRepository.save(category);
-    }
-
-    /**
-     * Validates indicator category data before saving.
-     * @param category The indicator category to validate
-     * @throws CustomException if validation fails
-     */
-    private void validateCategory(IndicatorCategory category) {
-        if (category.getName() == null || category.getName().trim().isEmpty()) {
-            throw new CustomException("Category name is required", HttpStatus.BAD_REQUEST);
-        }
-        
-        // Check for duplicate name
-        IndicatorCategory existingCategory = indicatorCategoryRepository.findByName(category.getName());
-        if (existingCategory != null && (category.getId() == null || !category.getId().equals(existingCategory.getId()))) {
-            throw new CustomException("Indicator category with this name already exists", HttpStatus.CONFLICT);
-        }
-        
-        // Set default display order if not provided
-        if (category.getDisplayOrder() == null) {
-            category.setDisplayOrder(0);
-        }
     }
 
     /**
@@ -83,7 +56,6 @@ public class IndicatorCategoryService {
      * @param id The indicator category ID to delete
      * @throws CustomException if indicator category is not found
      */
-    @Transactional
     public void delete(Long id) {
         IndicatorCategory category = findById(id);
         
@@ -93,8 +65,7 @@ public class IndicatorCategoryService {
                     "Cannot delete: Category has " + category.getIndicators().size() + " indicators assigned to it",
                     HttpStatus.CONFLICT);
         }
-        
-        log.info("Deleting indicator category with ID: {}", id);
+
         indicatorCategoryRepository.deleteById(id);
     }
 
@@ -105,12 +76,7 @@ public class IndicatorCategoryService {
      * @throws CustomException if indicator category is not found
      */
     public IndicatorCategory findByName(String name) {
-        log.info("Finding indicator category with name: {}", name);
-        IndicatorCategory category = indicatorCategoryRepository.findByName(name);
-        if (category == null) {
-            throw new CustomException("Indicator category not found with name: " + name, HttpStatus.NOT_FOUND);
-        }
-        return category;
+        return indicatorCategoryRepository.findByName(name);
     }
 
     /**
@@ -123,7 +89,6 @@ public class IndicatorCategoryService {
     public IndicatorCategory addIndicator(Long categoryId, Indicator indicator) {
         IndicatorCategory category = findById(categoryId);
         category.addIndicator(indicator);
-        log.info("Added indicator '{}' to category: {}", indicator.getName(), category.getName());
         return indicatorCategoryRepository.save(category);
     }
 
@@ -133,11 +98,9 @@ public class IndicatorCategoryService {
      * @param indicator The indicator to remove
      * @return The updated indicator category
      */
-    @Transactional
     public IndicatorCategory removeIndicator(Long categoryId, Indicator indicator) {
         IndicatorCategory category = findById(categoryId);
         category.removeIndicator(indicator);
-        log.info("Removed indicator '{}' from category: {}", indicator.getName(), category.getName());
         return indicatorCategoryRepository.save(category);
     }
 
@@ -151,7 +114,6 @@ public class IndicatorCategoryService {
     public IndicatorCategory updateDisplayOrder(Long id, Integer displayOrder) {
         IndicatorCategory category = findById(id);
         category.setDisplayOrder(displayOrder);
-        log.info("Updated display order for category '{}' to: {}", category.getName(), displayOrder);
         return indicatorCategoryRepository.save(category);
     }
 

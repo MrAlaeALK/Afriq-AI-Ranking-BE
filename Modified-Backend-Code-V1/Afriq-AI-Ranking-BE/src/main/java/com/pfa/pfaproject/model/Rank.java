@@ -36,14 +36,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "rank",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"country_id", "year"}, name = "uk_country_year_rank")
-        },
-        indexes = {
-                @Index(name = "idx_rank_year", columnList = "year")
-        }
-)
+@Table(name = "rank")
 public class Rank {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

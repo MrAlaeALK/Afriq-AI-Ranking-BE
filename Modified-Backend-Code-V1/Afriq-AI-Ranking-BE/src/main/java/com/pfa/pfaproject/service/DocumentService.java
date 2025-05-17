@@ -21,8 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service for managing Document entities and file storage.
- * ===========================================================
+ * Service for managing Document entities and file storage.<br/><br/>
  * 
  * This service handles all operations related to Document entities including:
  * - CRUD operations for document management
@@ -49,14 +48,11 @@ public class DocumentService {
     private static final String[] ALLOWED_FILE_TYPES = {"application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"};
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-    // ========== QUERY METHODS ==========
-
     /**
      * Returns all documents in the system, ordered by year descending.
      * @return List of all documents
      */
     public List<Document> findAll() {
-        log.info("Retrieving all documents");
         return documentRepository.findAllByOrderByYearDesc();
     }
 
@@ -67,7 +63,6 @@ public class DocumentService {
      * @throws CustomException if document is not found
      */
     public Document findById(Long id) {
-        log.info("Finding document with ID: {}", id);
         return documentRepository.findById(id)
                 .orElseThrow(() -> new CustomException("Document not found", HttpStatus.NOT_FOUND));
     }
@@ -79,8 +74,6 @@ public class DocumentService {
      * @throws CustomException if document is not found
      */
     public Document findByYear(Integer year) {
-        ValidationUtils.validateYear(year);
-        log.info("Finding document for year: {}", year);
         Document document = documentRepository.findByYear(year);
         if (document == null) {
             throw new CustomException("Document not found for year: " + year, HttpStatus.NOT_FOUND);
@@ -94,7 +87,6 @@ public class DocumentService {
      * @return true if exists, false otherwise
      */
     public boolean existsByYear(Integer year) {
-        ValidationUtils.validateYear(year);
         return documentRepository.existsByYear(year);
     }
 
@@ -108,8 +100,6 @@ public class DocumentService {
         Document document = findById(id);
         return Paths.get(document.getFilePath());
     }
-
-    // ========== COMMAND METHODS ==========
 
     /**
      * Uploads and saves a new document.
@@ -139,8 +129,7 @@ public class DocumentService {
                     .fileType(file.getContentType())
                     .admin(admin)
                     .build();
-            
-            log.info("Saving document for year: {} with file: {}", year, file.getOriginalFilename());
+
             return documentRepository.save(document);
             
         } catch (IOException e) {
@@ -162,7 +151,7 @@ public class DocumentService {
         
         Document document = findById(id);
         document.setTitle(title);
-        log.info("Updating document metadata for ID: {}", id);
+
         return documentRepository.save(document);
     }
 
@@ -191,8 +180,7 @@ public class DocumentService {
             document.setFilePath(newFilePath);
             document.setFileSize(newFile.getSize());
             document.setFileType(newFile.getContentType());
-            
-            log.info("Replacing file for document ID: {} with new file: {}", id, newFile.getOriginalFilename());
+
             return documentRepository.save(document);
             
         } catch (IOException e) {
@@ -220,8 +208,6 @@ public class DocumentService {
         log.info("Deleting document with ID: {}", id);
         documentRepository.deleteById(id);
     }
-
-    // ========== HELPER METHODS ==========
     
     /**
      * Saves a file to the storage system.
@@ -261,7 +247,6 @@ public class DocumentService {
         Files.deleteIfExists(path);
     }
 
-    // ========== VALIDATION METHODS ==========
     
     /**
      * Validates a file for upload.

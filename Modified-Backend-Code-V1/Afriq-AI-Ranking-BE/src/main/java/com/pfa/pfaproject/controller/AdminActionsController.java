@@ -5,6 +5,7 @@ import com.pfa.pfaproject.dto.Rank.GenerateRankOrFinalScoreDTO;
 import com.pfa.pfaproject.dto.Score.AddOrUpdateScoreDTO;
 import com.pfa.pfaproject.model.Country;
 import com.pfa.pfaproject.model.Indicator;
+import com.pfa.pfaproject.model.IndicatorCategory;
 import com.pfa.pfaproject.model.Score;
 import com.pfa.pfaproject.service.AdminBusinessService;
 import jakarta.validation.Valid;
@@ -34,7 +35,7 @@ public class AdminActionsController {
      * Adds a new country to the system.
      * 
      * @param country The country to add
-     * @return The created country with ID
+     * @return The created country
      */
     @PostMapping("/countries")
     public ResponseEntity<?> addCountry(@Valid @RequestBody Country country) {
@@ -46,7 +47,7 @@ public class AdminActionsController {
      * Adds a new indicator to the system.
      * 
      * @param indicator The indicator to add
-     * @return The created indicator with ID
+     * @return The created indicator
      */
     @PostMapping("/indicators")
     public ResponseEntity<?> addIndicator(@Valid @RequestBody Indicator indicator) {
@@ -55,10 +56,22 @@ public class AdminActionsController {
     }
 
     /**
+     * Adds a new indicator category to the system.
+     *
+     * @param indicatorCategory The indicator to add
+     * @return The created indicator category
+     */
+    @PostMapping("/indicator-categories")
+    public ResponseEntity<?> addCategory(@Valid @RequestBody IndicatorCategory indicatorCategory) {
+        IndicatorCategory addIndicatorCategory = adminBusinessService.addIndicatorCategory(indicatorCategory);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ResponseWrapper.success(addIndicatorCategory));
+    }
+
+    /**
      * Adds a new score for a country on a specific indicator.
      * 
      * @param addOrUpdateScoreDTO DTO containing score details
-     * @return The created score with ID
+     * @return The created score
      */
     @PostMapping("/scores")
     public ResponseEntity<?> addScore(@Valid @RequestBody AddOrUpdateScoreDTO addOrUpdateScoreDTO) {

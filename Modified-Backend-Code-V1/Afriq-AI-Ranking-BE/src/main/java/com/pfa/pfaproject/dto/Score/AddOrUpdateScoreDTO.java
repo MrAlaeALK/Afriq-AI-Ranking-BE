@@ -10,10 +10,10 @@ import java.time.Year;
  * Data Transfer Object for creating or updating score entries in the Afriq'AI ranking system.
  * 
  * This DTO is used in two contexts:
- *  -Creating new scores via the {@code addScore} method</li>
- *  -Updating existing scores via the {@code updateScore} method</li>
+ *  -Creating new scores via the {@code addScore} method
+ *  -Updating existing scores via the {@code updateScore} method
  * 
- * The combination of countryId, indicatorId, and year uniquely identifies a score record.</p>
+ * The combination of countryId, indicatorId, and year uniquely identifies a score record.
  * 
  * @see com.pfa.pfaproject.service.AdminBusinessService#addScore
  * @see com.pfa.pfaproject.service.AdminBusinessService#updateScore

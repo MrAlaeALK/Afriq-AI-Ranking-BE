@@ -28,10 +28,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "document",
-    uniqueConstraints = {
-        @UniqueConstraint(columnNames = "year", name = "uk_document_year")
-    })
+@Table(name = "document")
 public class Document {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

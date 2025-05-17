@@ -32,15 +32,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "score",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"country_id", "indicator_id", "year"},
-                        name = "uk_country_indicator_year")
-        },
-        indexes = {
-                @Index(name = "idx_score_year", columnList = "year")
-        }
-)
+@Table(name = "score")
 public class Score {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,7 +48,7 @@ public class Score {
 
     @NotNull(message = "Year is required")
     @Min(value = 2000, message = "Year must be at least 2000")
-    @Column(nullable = false)
+    @Column(unique = true, nullable = false)
     private int year;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -89,7 +81,7 @@ public class Score {
         lastModifiedDate = LocalDateTime.now();
     }
 
-    // Helper method to set normalized score from raw value
+    // method to set normalized score from raw value
     public void normalizeScore(String normalizationType, double minValue, double maxValue) {
         if (rawValue == null) return;
 

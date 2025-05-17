@@ -40,22 +40,23 @@ public class IndicatorCategory {
     private Long id;
 
     @NotBlank(message = "Category name is required")
-    @Size(min = 2, max = 100, message = "Category name must be between 2 and 100 characters")
+    @Size(min = 5, max = 100, message = "Category name must be between 5 and 100 characters")
     @Column(unique = true, nullable = false)
     private String name;
 
+    @NotBlank(message = "Category description is required")
     @Size(max = 500, message = "Description cannot exceed 500 characters")
-    @Column(length = 500)
+    @Column(length = 500, nullable = false)
     private String description;
 
-    // Display order in UI
+    // Display order in UI ?
     @Min(value = 0, message = "Display order must be a positive number")
     @Column(name = "display_order")
     private Integer displayOrder;
 
     // Relationship with indicators
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    @JsonManagedReference(value = "category")
+    //@JsonManagedReference(value = "category")
     @Builder.Default
     @OrderBy("weight DESC")
     private List<Indicator> indicators = new ArrayList<>();
