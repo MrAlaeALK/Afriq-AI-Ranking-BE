@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message de Contact</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+<div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);">
+    <!-- Logo -->
+    <div style="text-align: center;">
+        <img src="cid:logo_AfriqAI" width="100" height="100" alt="Logo_AfriqAI" style="max-width: 150px; height: auto;">
+    </div>
+
+    <!-- Email Content -->
+    <h1 style="color: #333333;">Nouveau message depuis contact de Afriq'AI</h1>
+
+    <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <p style="color: #555555; margin: 5px 0;"><strong>De:</strong> <span th:text="${senderName}">Nom d'expéditeur</span></p>
+        <p style="color: #555555; margin: 5px 0;"><strong>Email:</strong> <span th:text="${senderEmail}">email@example.com</span></p>
+        <p style="color: #555555; margin: 5px 0;"><strong>Sujet:</strong> <span th:text="${subject}">Sujet du message</span></p>
+    </div>
+
+    <h2 style="color: #333333;">Message:</h2>
+    <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <p style="color: #555555; white-space: pre-wrap;" th:text="${messageContent}">Contenu du message ici...</p>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; color: #777777; font-size: 12px; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
+        <p>Ce message a été envoyé via notre formulaire de contact.</p>
+    </div>
+</div>
+</body>
+</html>
