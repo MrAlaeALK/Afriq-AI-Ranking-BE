@@ -44,8 +44,8 @@ public class EmailController {
             MimeMessage mimeMessage = emailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-            helper.setFrom(request.getFrom() != null ? request.getFrom() : "address email pas necessaire ex:email@demo.com");
-            helper.setTo(request.getTo() != null ? request.getTo() : "address email qui va recevoir l'email ex: email@demo.com");
+            helper.setFrom(request.getFrom() != null ? request.getFrom() : "smenhiba@gmail.com");
+            helper.setTo(request.getTo() != null ? request.getTo() : "abdealghanismen1@gmail.com");
             helper.setSubject("[Contact Site] " + request.getSubject());
             helper.setText(htmlContent, true); // true pour indiquer que c'est du HTML
 
