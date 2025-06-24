@@ -18,9 +18,9 @@ public class DimensionWeight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private int dimensionWeight;
+    private Integer  dimensionWeight;
 
-    private int year;
+    private Integer  year;
 
     @ManyToOne
     @JsonBackReference(value="dimension-weight")

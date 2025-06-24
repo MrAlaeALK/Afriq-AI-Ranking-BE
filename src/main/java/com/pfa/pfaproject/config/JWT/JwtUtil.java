@@ -30,8 +30,11 @@ public class JwtUtil {
     @Value("${jwt.secretkey}")
     private String secretKey;
 
-    @Value("${jwt.expirationtime}")
+    @Value("${jwt.access-token-expiration-time}")
     private Long accessTokenExpirationTime;
+
+    @Value("${jwt.refresh-token-expiration-time}")
+    private Long refreshTokenExpirationTime;
 
     
     /**
@@ -55,6 +58,18 @@ public class JwtUtil {
         log.info("Access token generated successfully for user: {}", subject);
         return token;
     }
+
+    /**
+     * Generates a refresh token for a user.
+     * @param subject The username or subject identifier
+     * @param authorities The user's granted authorities/roles
+     * @return JWT refresh token string
+     */
+
+    public String generateRefreshToken(String subject, Collection<? extends GrantedAuthority> authorities) {
+        String token = createToken(subject, null, refreshTokenExpirationTime, "REFRESH");
+        return token;
+    }
     
     /**
      * Creates a JWT token with specified parameters.
@@ -69,7 +84,7 @@ public class JwtUtil {
         Date expiryDate = new Date(now.getTime() + expirationTime);
         
         Map<String, Object> claims = new HashMap<>();
-        if (authorities != null) {
+        if (authorities != null && !authorities.isEmpty()) { // if it's a refresh token do not include roles
             claims.put("roles", authorities);
         }
         claims.put("type", tokenType);
@@ -155,7 +170,7 @@ public class JwtUtil {
             final String tokenType = extractTokenType(token);
             
             return username.equals(userDetails.getUsername()) 
-                   && !isTokenExpired(token) 
+                   && !isTokenExpired(token)
                    && "ACCESS".equals(tokenType);
         } catch (ExpiredJwtException e) {
             log.warn("Expired JWT token for user: {}", userDetails.getUsername());
@@ -165,7 +180,23 @@ public class JwtUtil {
             return false;
         }
     }
-    
+
+    /**
+     * Validates if a token is a valid refresh token (signature, expiration, and type check).
+     * @param token The JWT refresh token
+     * @return true if valid, false otherwise
+     */
+    public boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return !isTokenExpired(token) && "REFRESH".equals(extractTokenType(token));
+        } catch (JwtException e) {
+            log.warn("Invalid refresh token: {}", e.getMessage());
+            return false;
+        }
+    }
+
+
     /**
      * Extracts the token type from a JWT token.
      * @param token The JWT token

@@ -106,7 +106,7 @@ public class Indicator {
 //    @Min(value = 0, message = "Weight must be at least 0")
 //    @Max(value = 100, message = "Weight cannot exceed 100")
 //    @Column(nullable = false)
-//    private int weight;
+//    private Integer  weight;
     
     /**
      * All scores for this indicator across different countries and years.

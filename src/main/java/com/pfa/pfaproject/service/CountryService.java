@@ -66,6 +66,7 @@ public class CountryService {
      */
     public Country findByName(String name) {
         return countryRepository.findByName(name);
+//                .orElseThrow(() -> new CustomException("Country not found", HttpStatus.NOT_FOUND));
     }
 
     /**
@@ -75,7 +76,9 @@ public class CountryService {
      * @throws CustomException if country is not found
      */
     public Country findByCode(String code) {
+
         return countryRepository.findByCode(code);
+//                .orElseThrow(() -> new CustomException(" Country not found", HttpStatus.NOT_FOUND));
     }
 
     /**

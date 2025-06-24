@@ -14,7 +14,7 @@ import java.util.List;
 public class DimensionWeightService {
     private final DimensionWeightRepository dimensionWeightRepository;
 
-    public List<DimensionWeight> getAllByYear(int year) {
+    public List<DimensionWeight> getAllByYear(Integer  year) {
         return dimensionWeightRepository.findByYear(year);
     }
 
@@ -22,15 +22,15 @@ public class DimensionWeightService {
         return dimensionWeightRepository.save(dimensionWeight);
     }
 
-    public DimensionWeight findByCategoryAndYear(Long dimensionId, int year) {
+    public DimensionWeight findByCategoryAndYear(Long dimensionId, Integer  year) {
         return dimensionWeightRepository.findByDimension_IdAndYear(dimensionId, year);
     }
 
-    public List<DimensionWeight> findByYear(int year) {
+    public List<DimensionWeight> findByYear(Integer  year) {
         return dimensionWeightRepository.findByYear(year);
     }
 
-    public List<GetYearDimensionsDTO> getYearDimensions(int year) {
+    public List<GetYearDimensionsDTO> getYearDimensions(Integer  year) {
         List<DimensionWeight> dimensionWeights = dimensionWeightRepository.findByYear(year);
         List<GetYearDimensionsDTO> yearDimensions = new ArrayList<>();
         for (DimensionWeight dimensionWeight : dimensionWeights) {

@@ -2,19 +2,30 @@ package com.pfa.pfaproject.controller;
 
 import com.pfa.pfaproject.dto.Rank.GenerateRankOrFinalScoreDTO;
 import com.pfa.pfaproject.dto.Score.AddOrUpdateScoreDTO;
+import com.pfa.pfaproject.dto.Score.AddScoreDTO;
+import com.pfa.pfaproject.dto.Score.ScoreDTO;
+import com.pfa.pfaproject.dto.ValidatedScoresDTO;
+import com.pfa.pfaproject.dto.WantedColumnsDTO;
 import com.pfa.pfaproject.dto.Weight.AddIndicatorWeightDTO;
 import com.pfa.pfaproject.dto.Weight.AddWeightDTO;
+import com.pfa.pfaproject.dto.YearRequestDTO;
 import com.pfa.pfaproject.model.Country;
 import com.pfa.pfaproject.model.Indicator;
 import com.pfa.pfaproject.model.Dimension;
 import com.pfa.pfaproject.model.Score;
 import com.pfa.pfaproject.service.AdminBusinessService;
+import com.pfa.pfaproject.service.FastApiService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.Map;
 
 /**
  * Controller handling administrative actions for the Afriq-AI Ranking system.
@@ -31,6 +42,7 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminActionsController {
     private final AdminBusinessService adminBusinessService;
+    private final FastApiService fastApiService;
 
     /**
      * Adds a new country to the system.
@@ -69,42 +81,17 @@ public class AdminActionsController {
     }
 
     /**
-     * Adds a new score for a country on a specific indicator.
-     * 
-     * @param addOrUpdateScoreDTO DTO containing score details
-     * @return The created score
-     */
-    @PostMapping("/scores")
-    public ResponseEntity<?> addScore(@Valid @RequestBody AddOrUpdateScoreDTO addOrUpdateScoreDTO) {
-        Score score = adminBusinessService.addScore(addOrUpdateScoreDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ResponseWrapper.success(score));
-    }
-
-    /**
      * Updates an existing score.
      * 
      * @param addOrUpdateScoreDTO DTO containing updated score details
      * @return The updated score
      */
-    @PutMapping("/scores")
+    @PutMapping("/update-score") //was before scores same as add
     public ResponseEntity<?> updateScore(@Valid @RequestBody AddOrUpdateScoreDTO addOrUpdateScoreDTO) {
         Score score = adminBusinessService.updateScore(addOrUpdateScoreDTO);
         return ResponseEntity.status(HttpStatus.OK).body(ResponseWrapper.success(score));
     }
 
-    /**
-     * Generates a final score for a specific country in a given year.
-     * 
-     * @param generateFinalScoreForCountryDTO DTO containing country ID and year
-     * @return The generated rank entry
-     */
-    //maybe we need it later but right now just let it like that so it does not throw any error regarding passing the dto
-    // if we need it we will simply change back to that damn dto
-//    @PostMapping("/final-scores/country")
-//    public ResponseEntity<?> generateFinalScoreForCountry(@Valid @RequestBody GenerateFinalScoreForCountryDTO generateFinalScoreForCountryDTO) {
-//        return ResponseEntity.status(HttpStatus.CREATED)
-//                .body(ResponseWrapper.success(adminBusinessService.calculateFinalScoreForCountry(generateFinalScoreForCountryDTO)));
-//    }
 
     /**
      * Generates final scores for all countries in a specific year.
@@ -113,7 +100,7 @@ public class AdminActionsController {
      * @return List of generated rank entries
      */
     @PostMapping("/final-scores")
-    public ResponseEntity<?> generateFinalScore(@Valid @RequestBody GenerateRankOrFinalScoreDTO generateRankOrFinalScoreDTO) {
+    public ResponseEntity<?> generateFinalScore(@Valid @RequestBody YearRequestDTO generateRankOrFinalScoreDTO) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseWrapper.success(adminBusinessService.generateFinalScores(generateRankOrFinalScoreDTO)));
     }
@@ -124,8 +111,8 @@ public class AdminActionsController {
      * @param generateRankOrFinalScoreDTO DTO containing the year
      * @return List of countries ordered by rank
      */
-    @PostMapping("/rankings")
-    public ResponseEntity<?> generateRanking(@Valid @RequestBody GenerateRankOrFinalScoreDTO generateRankOrFinalScoreDTO) {
+    @PostMapping("/generate-ranking")
+    public ResponseEntity<?> generateRanking(@Valid @RequestBody YearRequestDTO generateRankOrFinalScoreDTO) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseWrapper.success(adminBusinessService.generateRanking(generateRankOrFinalScoreDTO)));
     }
@@ -140,5 +127,105 @@ public class AdminActionsController {
     public ResponseEntity<?> addWeight(@RequestBody AddWeightDTO addWeightDTO) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseWrapper.success(adminBusinessService.addDimensionWeight(addWeightDTO)));
+    }
+
+    //endpoints for scores page
+    @GetMapping("/scores")
+    public ResponseEntity<?> getAllScores() {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getAllScores()));
+    }
+
+    @DeleteMapping("/delete-score/{id}")
+    public ResponseEntity<?> deleteScore(@PathVariable @NotNull Long id){
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.deleteScore(id)));
+    }
+
+    @PostMapping("/edit-score")
+    public ResponseEntity<?> updateScore(@Valid @RequestBody ScoreDTO scoreDTO) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.updateScore(scoreDTO)));
+    }
+
+    //this is for getting possible years (indicator years) to add scores for
+    @GetMapping("/indicators-years")
+    public ResponseEntity<?> getAllIndicatorYears() {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getAllIndicatorYears()));
+    }
+
+    @PostMapping("/year_indicators")
+    public ResponseEntity<?> getYearIndicators(@Valid @RequestBody YearRequestDTO yearRequestDTO) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getYearIndicators(yearRequestDTO.year())));
+    }
+
+    @GetMapping("/all_countries")
+    public ResponseEntity<?> getAllCountries() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getAllCountries()));
+    }
+
+    @PostMapping("/add-score")
+    public ResponseEntity<?> addScore(@Valid @RequestBody AddScoreDTO addScoreDTO) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.addScore(addScoreDTO)));
+    }
+
+    @PostMapping("/upload-score-file")
+    public ResponseEntity<?> uploadDocument(@RequestParam("file") MultipartFile file){
+        return ResponseEntity.status(HttpStatus.CREATED).body(ResponseWrapper.success(fastApiService.sendFileToFastApi(file)));
+    }
+
+    @PostMapping("/validate_fetched_columns")
+    public ResponseEntity<?> processConfirmed(
+            @RequestPart("file") MultipartFile file,
+            @Valid @RequestPart("columns") WantedColumnsDTO dto) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(fastApiService.sendJsonToFastApi(file,dto)));
+    }
+
+    @PostMapping("/validate_scores")
+    public ResponseEntity<?> validateScores(@Valid @RequestBody ValidatedScoresDTO validatedScoresDTO) {
+        adminBusinessService.validateScores(validatedScoresDTO);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success("scores persisted successfully"));
+    }
+
+    @PostMapping("/year-ranking")
+    public ResponseEntity<?> getYearRanking(@Valid @RequestBody YearRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getYearRanking(request.year())));
+    }
+
+    @GetMapping("/ranking-years")
+    public ResponseEntity<?> getAllRankingYears() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getYearsWithRanking()));
+    }
+
+    @GetMapping("/all-rankings")
+    public ResponseEntity<?> getAllRankings() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getAllRanks()));
+    }
+
+    @PostMapping("/dimension-scores")
+    public ResponseEntity<?> getDimensionScoresByYear(@Valid @RequestBody YearRequestDTO request) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getDimensionScoresByYear(request.year())));
+    }
+
+    @DeleteMapping("/delete-ranking/{year}")
+    public ResponseEntity<?> deleteRanking(@PathVariable @NotNull Integer year) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.deleteRankingByYear(year)));
     }
 }

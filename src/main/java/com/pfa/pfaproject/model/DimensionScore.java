@@ -19,9 +19,9 @@ public class DimensionScore {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private double score;
+    private Double score;
 
-    private int year;
+    private Integer  year;
 
     @ManyToOne
     @JsonBackReference(value = "dimension-dimensionScore")
@@ -30,4 +30,5 @@ public class DimensionScore {
     @ManyToOne
     @JsonBackReference(value = "country-dimensionScore")
     private Country country;
+
 }

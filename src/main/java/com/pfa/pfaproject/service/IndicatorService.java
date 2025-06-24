@@ -65,6 +65,7 @@ public class IndicatorService {
      */
     public Indicator findByName(String name) {
         return indicatorRepository.findByName(name);
+//                .orElseThrow(() -> new CustomException("Indicator not found", HttpStatus.NOT_FOUND));
     }
 
     /**

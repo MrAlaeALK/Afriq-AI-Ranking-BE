@@ -8,10 +8,8 @@ import java.util.List;
 
 @Repository
 public interface ScoreRepository extends JpaRepository<Score, Long> {
-    public Score findByCountry_IdAndIndicator_IdAndYear(Long countryId, Long indicatorId, int year);
-    public Score findByYear(int year);
-    List<Score> findByIndicator_IdAndYear(Long indicatorId, int year);
-    List<Score> findByCountry_IdAndYear(Long countryId, int year);
+    Score findByCountry_IdAndIndicator_IdAndYear(Long countryId, Long indicatorId, Integer  year);
+    Score findByCountry_NameAndIndicator_NameAndYear(String countryName, String indicatorName, Integer  year);
 }
 
 

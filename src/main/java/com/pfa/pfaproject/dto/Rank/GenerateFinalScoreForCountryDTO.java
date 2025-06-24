@@ -21,7 +21,7 @@ public record GenerateFinalScoreForCountryDTO(
         Long countryId,
         
         @Min(value = 2000, message = "Year must be 2000 or later")
-        int year
+        Integer year
 ) {
     /**
      * Validates the DTO when it's constructed.

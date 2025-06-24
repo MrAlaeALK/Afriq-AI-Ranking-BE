@@ -45,11 +45,11 @@ public class Rank {
 
     @NotNull(message = "Final score is required")
     @Column(name = "final_score", nullable = false)
-    private double finalScore;
+    private Double finalScore;
 
     @Min(value = 1, message = "Rank must be at least 1")
     @Column(nullable = false)
-    private int rank;
+    private Integer  rank;
 
     /* Could have a better year validation logic
      * The min year 2000 could be changed in future
@@ -57,7 +57,7 @@ public class Rank {
     @NotNull(message = "Year is required")
     @Min(value = 2000, message = "Year must be at least 2000")
     @Column(nullable = false)
-    private int year;
+    private Integer  year;
 
     /* Improve Performance
      * Loading a Rank entity doesn't

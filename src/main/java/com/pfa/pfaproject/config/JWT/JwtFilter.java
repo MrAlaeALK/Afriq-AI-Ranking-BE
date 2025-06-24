@@ -1,6 +1,7 @@
 package com.pfa.pfaproject.config.JWT;
 
 import com.pfa.pfaproject.service.AdminService;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -76,7 +77,8 @@ public class JwtFilter extends OncePerRequestFilter {
                 try {
                     username = jwtUtil.extractUsername(jwtToken);
                     log.debug("Extracted username from token: {}", username);
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     log.warn("Invalid JWT token: {}", e.getMessage());
                     // Don't set response status here, as it might be an endpoint that doesn't require authentication
                 }

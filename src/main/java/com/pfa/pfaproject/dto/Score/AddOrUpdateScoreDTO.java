@@ -26,10 +26,10 @@ public record AddOrUpdateScoreDTO(
         Long indicatorId,
         
         @Min(value = 2000, message = "Year must be 2000 or later")
-        int year,
+        Integer year,
         
         @Min(value = 0, message = "Score must be a positive number")
-        double score
+        Double score
 ) {
     /**
      * Validates the DTO when it's constructed.

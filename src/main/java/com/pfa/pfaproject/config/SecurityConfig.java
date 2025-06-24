@@ -18,6 +18,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -87,7 +88,7 @@ public class SecurityConfig {
 //                        // All other requests need authentication
 //                        .anyRequest().authenticated())
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/admin/dashboard").permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN") // return it to hasRole later
                         .anyRequest().permitAll())
                 
                 // Set authentication provider
@@ -125,6 +126,15 @@ public class SecurityConfig {
     }
 
     /**
+     * Creates a RestTemplate bean for making HTTP requests.
+     * @return RestTemplate instance
+     */
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    /**
      * Creates the authentication manager.
      * @param http The HttpSecurity to get the shared objects from
      * @return The configured authentication manager
@@ -150,10 +160,26 @@ public class SecurityConfig {
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(false); // Since we're using JWT, not session cookies
         configuration.setMaxAge(3600L); // 1 hour
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
+    //for future use (httpOnly cookie for refresh token)
+//    @Bean
+//    public CorsConfigurationSource corsConfigurationSource() {
+//        CorsConfiguration configuration = new CorsConfiguration();
+//        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // In production, restrict to specific origins
+//        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+//        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Cookie"));
+//        configuration.setExposedHeaders(List.of("Authorization"));
+//        configuration.setAllowCredentials(true); // Since we're using JWT, not session cookies
+//        configuration.setMaxAge(3600L); // 1 hour
+//
+//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+//        source.registerCorsConfiguration("/**", configuration);
+//        return source;
+//    }
+//}
 

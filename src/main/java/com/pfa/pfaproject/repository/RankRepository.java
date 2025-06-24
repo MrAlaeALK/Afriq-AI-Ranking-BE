@@ -8,8 +8,8 @@ import java.util.List;
 
 @Repository
 public interface RankRepository extends JpaRepository<Rank, Long> {
-    List<Rank> findAllByYearOrderByFinalScoreDesc(int year);
-    Rank findByCountry_IdAndYear(Long countryId, int year);
-    List<Rank> findAllByYearOrderByRank(int year);
-//    List<Rank> orderByFinalScoreDesc(List<Rank> ranks);
+    List<Rank> findAllByYearOrderByFinalScoreDesc(Integer  year);
+    Rank findByCountry_IdAndYear(Long countryId, Integer  year);
+    List<Rank> findAllByYearOrderByRank(Integer  year);
+    List<Rank> findAllByYear(Integer  year);
 }

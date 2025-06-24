@@ -17,7 +17,7 @@ class ValidationUtilsTest {
     @Test
     void validateYear_withValidYear_shouldNotThrowException() {
         // Given: A valid year (2023)
-        int validYear = 2023;
+        Integer  validYear = 2023;
         
         // When/Then: No exception should be thrown
         assertDoesNotThrow(() -> ValidationUtils.validateYear(validYear));
@@ -26,7 +26,7 @@ class ValidationUtilsTest {
     @Test
     void validateYear_withInvalidYear_shouldThrowException() {
         // Given: An invalid year (1999)
-        int invalidYear = 1999;
+        Integer  invalidYear = 1999;
         
         // When/Then: CustomException should be thrown with BAD_REQUEST status
         CustomException exception = assertThrows(CustomException.class, 
@@ -39,7 +39,7 @@ class ValidationUtilsTest {
     @Test
     void validateYear_withCustomMessage_shouldUseProvidedMessage() {
         // Given: An invalid year and custom message
-        int invalidYear = 1999;
+        Integer  invalidYear = 1999;
         String customMessage = "Year must be 2000 or later";
         
         // When/Then: Exception should use the custom message

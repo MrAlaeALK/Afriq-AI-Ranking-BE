@@ -2,7 +2,9 @@ package com.pfa.pfaproject.validation;
 
 import com.pfa.pfaproject.exception.CustomException;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -23,6 +25,13 @@ public final class ValidationUtils {
     public static final int MAX_INDICATOR_WEIGHT = 100;
     public static final int MIN_INDICATOR_WEIGHT = 1;
     public static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+    public static final long  MAX_FILE_SIZE = 10 * 1024 * 1024; // default 10MB
+
+    private static final Set<String> SUPPORTED_TYPES = Set.of(
+            "text/csv",
+            "application/vnd.ms-excel", // .xls
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" // .xlsx
+    );
     
     /**
      * Validates that a year meets the minimum requirements for the application.
@@ -30,7 +39,7 @@ public final class ValidationUtils {
      * @param errorMessage Optional custom error message (will use default if null)
      * @throws CustomException if the year is invalid
      */
-    public static void validateYear(int year, String errorMessage) {
+    public static void validateYear(Integer  year, String errorMessage) {
         if (year < MIN_VALID_YEAR) {
             throw new CustomException(
                     errorMessage != null ? errorMessage : 
@@ -45,7 +54,7 @@ public final class ValidationUtils {
      * @param year The year to validate
      * @throws CustomException if the year is invalid
      */
-    public static void validateYear(int year) {
+    public static void validateYear(Integer  year) {
         validateYear(year, null);
     }
     
@@ -54,7 +63,7 @@ public final class ValidationUtils {
      * @param weight The weight to validate
      * @throws CustomException if the weight is invalid
      */
-    public static void validateIndicatorWeight(int weight) {
+    public static void validateIndicatorWeight(Integer  weight) {
         if (weight < MIN_INDICATOR_WEIGHT || weight > MAX_INDICATOR_WEIGHT) {
             throw new CustomException(
                     String.format("Weight must be between %d and %d", 
@@ -85,4 +94,21 @@ public final class ValidationUtils {
                     HttpStatus.BAD_REQUEST);
         }
     }
-} 
+
+
+
+    public static void validateFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new CustomException("Le fichier est vide", HttpStatus.BAD_REQUEST);
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !SUPPORTED_TYPES.contains(contentType)) {
+            throw new CustomException("Type de fichier non supporté. Seuls les fichiers CSV ou Excel sont autorisés.", HttpStatus.BAD_REQUEST);
+        }
+
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new CustomException("Le fichier dépasse la taille maximale autorisée (" + (MAX_FILE_SIZE / (1024 * 1024)) + "MB)", HttpStatus.BAD_REQUEST);
+        }
+    }
+}

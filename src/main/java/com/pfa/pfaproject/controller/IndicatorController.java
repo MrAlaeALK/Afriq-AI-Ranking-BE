@@ -54,18 +54,6 @@ public class IndicatorController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseWrapper.success(indicatorService.findById(id)));
     }
-    
-    /**
-     * Retrieves indicators filtered by category.
-     * 
-     * @param categoryId The category ID to filter by
-     * @return List of indicators in the specified category
-     */
-//    @GetMapping("/category/{categoryId}")
-//    @PreAuthorize("isAuthenticated()")
-//    public ResponseEntity<?> getIndicatorsByCategory(
-//            @PathVariable @Min(value = 1, message = "Category ID must be positive") Long categoryId) {
-//        return ResponseEntity.status(HttpStatus.OK)
-//                .body(ResponseWrapper.success(indicatorService.findByDimension(categoryId)));
-//    }
+
+
 }

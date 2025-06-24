@@ -20,7 +20,7 @@ import java.time.Year;
  */
 public record GenerateRankOrFinalScoreDTO(
         @Min(value = 2000, message = "Year must be 2000 or later")
-        int year
+        Integer year
 ) {
     /**
      * Validates the DTO when it's constructed.

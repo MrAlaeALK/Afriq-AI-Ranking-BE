@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing Rank entities and computing country rankings.
@@ -63,7 +65,7 @@ public class RankService {
      * @param year The year to search
      * @return List of ranks for the specified year
      */
-    public List<Rank> findByYearOrderByFinalScoreDesc(int year) {
+    public List<Rank> findByYearOrderByFinalScoreDesc(Integer  year) {
         return rankRepository.findAllByYearOrderByFinalScoreDesc(year);
     }
 
@@ -73,7 +75,7 @@ public class RankService {
      * @param year The year
      * @return The found rank
      */
-    public Rank findByCountryIdAndYear(Long countryId, int year) {
+    public Rank findByCountryIdAndYear(Long countryId, Integer  year) {
         return rankRepository.findByCountry_IdAndYear(countryId, year);
     }
     
@@ -83,7 +85,7 @@ public class RankService {
      * @param year The year
      * @return true if exists, false otherwise
      */
-    public boolean existsByCountryIdAndYear(Long countryId, int year) {
+    public boolean existsByCountryIdAndYear(Long countryId, Integer  year) {
         return rankRepository.findByCountry_IdAndYear(countryId, year) != null;
     }
 
@@ -120,7 +122,7 @@ public class RankService {
      * @param year The year to update ranks for
      */
     @Transactional
-    public void updateRankPositions(int year) {
+    public void updateRankPositions(Integer  year) {
 
         List<Rank> ranks = rankRepository.findAllByYearOrderByFinalScoreDesc(year);
         
@@ -145,7 +147,7 @@ public class RankService {
     }
 
 
-    public  List<getFinalScoreAndRankDTO> findAllByYearOrderByRank(int year){
+    public  List<getFinalScoreAndRankDTO> findAllByYearOrderByRank(Integer  year){
         List<Country> countriesRanked = rankRepository.findAllByYearOrderByRank(year)
                 .stream()
                 .map(Rank::getCountry)
@@ -153,14 +155,30 @@ public class RankService {
         List<getFinalScoreAndRankDTO> listOfRanksAndScores= new ArrayList<>();
         for (Country country : countriesRanked) {
             Rank rank = findByCountryIdAndYear(country.getId(), year);
+            //skip null ranks (validation step)
+            if (rank != null) {
+                listOfRanksAndScores.add(new getFinalScoreAndRankDTO(country.getId(), country.getName(), country.getCode(), country.getRegion(), rank.getFinalScore(), rank.getRank()));
 
-            listOfRanksAndScores.add(new getFinalScoreAndRankDTO(country.getId(), country.getName(), country.getCode(), country.getRegion(), rank.getFinalScore(), rank.getRank()));
+            }
         }
         return listOfRanksAndScores;
     }
 
+    public List<Rank> findAllByYear(Integer year) {
+        return rankRepository.findAllByYear(year);
+    }
 //    public List<Rank> orderByFinalScore(List<Rank> ranks){
 //        return rankRepository.orderByFinalScoreDesc(ranks);
 //    }
+
+    public List<Integer> getDistinctYearsFromRanks() {
+        List<Rank> allRanks = rankRepository.findAll();
+
+        return allRanks.stream()
+                .map(Rank::getYear)
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList());
+    }
 }
 

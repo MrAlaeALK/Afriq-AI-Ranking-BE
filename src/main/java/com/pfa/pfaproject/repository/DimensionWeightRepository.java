@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 @Repository
 public interface DimensionWeightRepository extends JpaRepository<DimensionWeight, Long> {
-    List<DimensionWeight> findByYear(int year);
+    List<DimensionWeight> findByYear(Integer  year);
 
-    DimensionWeight findByDimension_IdAndYear(Long id, int year);
+    DimensionWeight findByDimension_IdAndYear(Long id, Integer  year);
 }

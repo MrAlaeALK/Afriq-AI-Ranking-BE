@@ -4,6 +4,6 @@ public record GetYearDimensionsDTO(
         Long id,
         String name,
         String description,
-        double weight
+        Integer weight
 ) {
 }

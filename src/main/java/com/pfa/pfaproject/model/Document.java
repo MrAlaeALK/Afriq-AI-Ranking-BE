@@ -40,7 +40,7 @@ public class Document {
     
     @NotNull(message = "Year is required")
     @Min(value = 2000, message = "Year must be at least 2000")
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private Integer year;
     
     // Storage informations Part
@@ -62,11 +62,6 @@ public class Document {
     // Contain the original name of the uploaded file
     @Column(name = "file_name", nullable = false)
     private String fileName;
-    
-    // Admin who uploaded the document
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "admin_id")
-    private Admin admin;
     
     // Audit fields
     @Column(name = "created_date")

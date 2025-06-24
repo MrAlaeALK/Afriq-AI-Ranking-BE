@@ -38,31 +38,21 @@ public class Score {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-//    @NotNull(message = "Score value is required")
-//    @Column(nullable = false)
-    private double score;
+    private Double score;
 
-    // Optional field to store the original value before normalization
-//    @Column(name = "raw_value")
     private Double rawValue;
 
 //    @NotNull(message = "Year is required")
 //    @Min(value = 2000, message = "Year must be at least 2000")
 //    @Column(unique = false, nullable = false)
-    private int year;
+    private Integer  year;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
     @ManyToOne
-//    @JoinColumn(name = "country_id", nullable = false)
     @JsonBackReference(value = "country-score")
-//    @NotNull(message = "Country is required")
     private Country country;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
     @ManyToOne
-//    @JoinColumn(name = "indicator_id", nullable = false)
     @JsonBackReference(value = "indicator-score")
-//    @NotNull(message = "Indicator is required")
     private Indicator indicator;
 
     // Audit fields
@@ -83,14 +73,4 @@ public class Score {
         lastModifiedDate = LocalDateTime.now();
     }
 
-    // method to set normalized score from raw value
-    public void normalizeScore(String normalizationType, double minValue, double maxValue) {
-        if (rawValue == null) return;
-
-        // Simple min-max normalization (All we need for now)
-        if ("MIN_MAX".equals(normalizationType) && maxValue > minValue) {
-            score = ((rawValue - minValue) / (maxValue - minValue)) * 100;
-        }
-        // Other normalization types can be implemented here
-    }
 }

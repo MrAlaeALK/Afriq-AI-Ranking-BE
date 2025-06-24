@@ -5,11 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface IndicatorRepository extends JpaRepository<Indicator, Long> {
-    public Indicator findByName(String name);
+    Indicator findByName(String name);
     List<Indicator> findByNormalizationType(String normalizationType);
-//    List<Indicator> findByDimension_Id(Long categoryId);
 }
 

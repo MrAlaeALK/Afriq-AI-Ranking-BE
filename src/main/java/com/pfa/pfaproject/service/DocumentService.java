@@ -6,7 +6,10 @@ import com.pfa.pfaproject.model.Document;
 import com.pfa.pfaproject.repository.DocumentRepository;
 import com.pfa.pfaproject.validation.ValidationUtils;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,17 +39,16 @@ import java.util.UUID;
  * @version 1.1
  */
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
 public class DocumentService {
     private final DocumentRepository documentRepository;
     private final AdminService adminService;
-    
+
     // Constants for document management
-    private static final String UPLOAD_DIR = "uploads/documents";
-    private static final String[] ALLOWED_FILE_TYPES = {"application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"};
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    @Value("${file.uploaddir}")
+    private String uploadDir;
 
     /**
      * Returns all documents in the system, ordered by year descending.
@@ -101,37 +103,25 @@ public class DocumentService {
         return Paths.get(document.getFilePath());
     }
 
-    /**
-     * Uploads and saves a new document.
-     * @param title The document title
-     * @param year The document year
-     * @param file The uploaded file
-     * @param adminId The ID of the admin uploading the document
-     * @return The saved document with ID
-     * @throws CustomException if validation fails or file upload has issues
-     */
+
     @Transactional
-    public Document uploadDocument(String title, Integer year, MultipartFile file, Long adminId) {
-        validateDocumentUpload(title, year, file);
-        
-        Admin admin = adminService.findById(adminId);
-        
+    public Document uploadDocument(Integer year, MultipartFile file) {
+
         try {
             String filePath = saveFileToStorage(file);
-            
+
             // Create document entity
             Document document = Document.builder()
-                    .title(title)
+                    .title(file.getOriginalFilename())
                     .year(year)
                     .fileName(file.getOriginalFilename())
                     .filePath(filePath)
                     .fileSize(file.getSize())
                     .fileType(file.getContentType())
-                    .admin(admin)
                     .build();
 
             return documentRepository.save(document);
-            
+
         } catch (IOException e) {
             log.error("Failed to store file", e);
             throw new CustomException("Failed to store file: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
@@ -164,7 +154,8 @@ public class DocumentService {
      */
     @Transactional
     public Document replaceFile(Long id, MultipartFile newFile) {
-        validateFile(newFile);
+//        validateFile(newFile);
+        ValidationUtils.validateFile(newFile);
         
         Document document = findById(id);
         
@@ -217,7 +208,7 @@ public class DocumentService {
      */
     private String saveFileToStorage(MultipartFile file) throws IOException {
         // Create directory if it doesn't exist
-        Path uploadPath = Paths.get(UPLOAD_DIR);
+        Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
@@ -245,54 +236,5 @@ public class DocumentService {
     private void deleteFileFromStorage(String filePath) throws IOException {
         Path path = Paths.get(filePath);
         Files.deleteIfExists(path);
-    }
-
-    
-    /**
-     * Validates a file for upload.
-     * @param file The file to validate
-     * @throws CustomException if validation fails
-     */
-    private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new CustomException("Cannot upload empty file", HttpStatus.BAD_REQUEST);
-        }
-        
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new CustomException("File size exceeds maximum allowed (10MB)", HttpStatus.BAD_REQUEST);
-        }
-        
-        String contentType = file.getContentType();
-        boolean isAllowed = false;
-        
-        if (contentType != null) {
-            for (String allowedType : ALLOWED_FILE_TYPES) {
-                if (contentType.equals(allowedType)) {
-                    isAllowed = true;
-                    break;
-                }
-            }
-        }
-        
-        if (!isAllowed) {
-            throw new CustomException("File type not allowed. Please upload PDF or Word documents", HttpStatus.BAD_REQUEST);
-        }
-    }
-    
-    /**
-     * Validates document upload parameters.
-     * @param title The document title
-     * @param year The document year
-     * @param file The uploaded file
-     * @throws CustomException if validation fails
-     */
-    private void validateDocumentUpload(String title, Integer year, MultipartFile file) {
-        ValidationUtils.validateNotEmpty(title, "Document title");
-        ValidationUtils.validateYear(year);
-        validateFile(file);
-        
-        if (documentRepository.existsByYear(year)) {
-            throw new CustomException("A document for year " + year + " already exists", HttpStatus.CONFLICT);
-        }
     }
 } 

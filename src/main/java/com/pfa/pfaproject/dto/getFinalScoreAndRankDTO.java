@@ -5,7 +5,7 @@ public record getFinalScoreAndRankDTO(
         String countryName,
         String countryCode,
         String countryRegion,
-        double finalScore,
-        int rank
+        Double finalScore,
+        Integer rank
 ) {
 }

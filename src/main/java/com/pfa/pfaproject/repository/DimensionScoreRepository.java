@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface DimensionScoreRepository extends JpaRepository<DimensionScore, Long> {
-    public List<DimensionScore> findByYear(int year);
-    public DimensionScore findByCountry_IdAndDimension_IdAndYear(Long country_id, Long dimension_id, int year);
+    List<DimensionScore> findByYear(Integer  year);
+    DimensionScore findByCountry_IdAndDimension_IdAndYear(Long country_id, Long dimension_id, Integer  year);
 }
