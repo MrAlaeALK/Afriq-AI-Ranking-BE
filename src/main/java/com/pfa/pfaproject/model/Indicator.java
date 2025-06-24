@@ -103,10 +103,10 @@ public class Indicator {
      * Higher weights give the indicator more influence on the final score.
      * Scale: 0 (minimal importance) to 100 (highest importance)
      */
-//    @Min(value = 0, message = "Weight must be at least 0")
-//    @Max(value = 100, message = "Weight cannot exceed 100")
-//    @Column(nullable = false)
-//    private Integer  weight;
+    @Min(value = 0, message = "Weight must be at least 0")
+    @Max(value = 100, message = "Weight cannot exceed 100")
+    @Column(nullable = false)
+    private Integer  weight;
 
     
     /**
