@@ -17,13 +17,6 @@ import java.util.List;
  * Africa AI Ranking system. Categories help organize indicators into
  * meaningful clusters such as "Infrastructure", "Education", "Research Output",
  * "Government Policy", etc.
- *
- * Categories enable:
- * - Better organization of indicators
- * - Filtering and visualization by thematic areas
- * - Comparing countries across specific domains
- *
- * @since 1.0
  */
 @Entity
 @Getter
@@ -31,34 +24,26 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "dimension")
+@Table(name = "dimension", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"name", "year"})
+})
 public class Dimension {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-//    @NotBlank(message = "Category name is required")
-//    @Size(min = 5, max = 100, message = "Category name must be between 5 and 100 characters")
-//    @Column(unique = true, nullable = false)
-    @Column(unique = true)
+    @Column(nullable = false)
     private String name;
 
-//    @NotBlank(message = "Category description is required")
-//    @Size(max = 500, message = "Description cannot exceed 500 characters")
-//    @Column(length = 500, nullable = false)
+    @Column(nullable = false)
+    private Integer year;
+
     private String description;
 
     // Display order in UI ?
     @Min(value = 0, message = "Display order must be a positive number")
     @Column(name = "display_order")
     private Integer displayOrder;
-
-    // Relationship with indicators
-//    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-//    @JsonManagedReference(value = "category-indicator")
-//    @Builder.Default
-//    @OrderBy("weight DESC")
-//    private List<Indicator> indicators = new ArrayList<>();
 
     @OneToMany(mappedBy = "dimension", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference(value = "dimension-weight")
@@ -68,13 +53,9 @@ public class Dimension {
     @JsonManagedReference(value = "dimension-dimensionScore")
     private List<DimensionScore> dimensionScores = new ArrayList<>();
 
-    // Audit fields
-//    @Column(name = "created_date")
     private LocalDateTime createdDate;
 
-//    @Column(name = "last_modified_date")
     private LocalDateTime lastModifiedDate;
-
 
     @PrePersist
     protected void onCreate() {
@@ -86,17 +67,6 @@ public class Dimension {
     protected void onUpdate() {
         lastModifiedDate = LocalDateTime.now();
     }
-
-    // Helper methods
-//    public void addIndicator(Indicator indicator) {
-//        indicators.add(indicator);
-//        indicator.setCategory(this);
-//    }
-//
-//    public void removeIndicator(Indicator indicator) {
-//        indicators.remove(indicator);
-//        indicator.setCategory(null);
-//    }
 
     public void addWeight(DimensionWeight weight) {
         weights.add(weight);

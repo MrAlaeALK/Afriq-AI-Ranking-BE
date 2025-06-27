@@ -1,9 +1,10 @@
 package com.pfa.pfaproject.dto.Dimension;
 
-public record GetYearDimensionsDTO(
+public record DimensionResponseDTO(
         Long id,
         String name,
         String description,
-        Double weight
+        Double weight,
+        Integer year
 ) {
-}
+} 

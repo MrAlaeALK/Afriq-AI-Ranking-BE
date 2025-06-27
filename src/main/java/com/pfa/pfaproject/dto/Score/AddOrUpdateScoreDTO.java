@@ -25,7 +25,7 @@ public record AddOrUpdateScoreDTO(
         @NotNull(message = "Please select an indicator")
         Long indicatorId,
         
-        @Min(value = 2000, message = "Year must be 2000 or later")
+        @Min(value = 2020, message = "Year must be 2020 or later")
         Integer year,
         
         @Min(value = 0, message = "Score must be a positive number")
@@ -36,8 +36,15 @@ public record AddOrUpdateScoreDTO(
      * This compact form constructor ensures all validation rules are checked.
      */
     public AddOrUpdateScoreDTO {
-        if (year > Year.now().getValue()) {
-            throw new IllegalArgumentException("Year cannot be in the future");
+        int currentYear = Year.now().getValue();
+        
+        if (year != null) {
+            if (year > currentYear) {
+                throw new IllegalArgumentException("Year cannot be in the future");
+            }
+            if (year < 2020) {
+                throw new IllegalArgumentException("Year must be 2020 or later");
+            }
         }
         
         if (countryId != null && countryId <= 0) {

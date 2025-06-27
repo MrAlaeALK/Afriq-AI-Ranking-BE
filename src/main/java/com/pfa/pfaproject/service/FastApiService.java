@@ -98,8 +98,7 @@ public class FastApiService {
                 }
             }
             FetchScoresDTO fetchScoresDTO = new FetchScoresDTO(dto.countryColumn(), indicatorColumns);
-            System.out.println("fetchScoresDTO = " + fetchScoresDTO);
-            System.out.println("file name" + multipartFile.getOriginalFilename());
+            
 
             // Multipart headers
             HttpHeaders headers = new HttpHeaders();
@@ -130,8 +129,7 @@ public class FastApiService {
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            System.out.println("Request Body: " + body);
-            System.out.println("Headers: " + headers);
+            
             ParameterizedTypeReference<List<ScoresToValidateDTO>> responseType =
                     new ParameterizedTypeReference<List<ScoresToValidateDTO>>() {};
 

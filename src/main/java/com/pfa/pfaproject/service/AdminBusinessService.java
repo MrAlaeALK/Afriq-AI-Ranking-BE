@@ -166,9 +166,14 @@ public class AdminBusinessService {
      * @throws CustomException if category already exists
      */
     public Dimension addDimension(Dimension dimension) {
-        Dimension existingDimension = dimensionService.findByName(dimension.getName());
-        if (existingDimension != null) {
-            throw new CustomException("Category already exists", HttpStatus.CONFLICT);
+        // Check if dimension with same name already exists for this year
+        boolean dimensionExists = dimensionService.existsByNameAndYear(dimension.getName(), dimension.getYear());
+        if (dimensionExists) {
+            throw new CustomException(
+                String.format("Dimension avec le nom '%s' existe déjà pour l'année %d", 
+                    dimension.getName(), dimension.getYear()), 
+                HttpStatus.CONFLICT
+            );
         }
 
         Dimension savedDimension = dimensionService.save(dimension);
@@ -220,7 +225,7 @@ public class AdminBusinessService {
         Dimension dimension = dimensionService.findById(dto.id());
         DimensionWeight dimensionWeight = DimensionWeight.builder()
                 .year(dto.year())
-                .dimensionWeight(dto.weight())
+                .dimensionWeight(Double.valueOf(dto.weight()))
                 .dimension(dimension)
                 .build();
         return categoryWeightService.save(dimensionWeight);
@@ -229,7 +234,7 @@ public class AdminBusinessService {
     public IndicatorWeight addIndicatorWeight(AddIndicatorWeightDTO dto) {
         IndicatorWeight indicatorWeight = IndicatorWeight.builder()
                 .indicator(indicatorService.findById(dto.indicatorId()))
-                .weight(dto.weight())
+                .weight(Double.valueOf(dto.weight()))
                 .dimensionWeight(categoryWeightService.findByCategoryAndYear(dto.categoryId(), dto.year()))
                 .build();
         return indicatorWeightService.save(indicatorWeight);
@@ -369,14 +374,17 @@ public class AdminBusinessService {
         List<Score> scores = scoreService.findAll();
         List<ScoreDTO> allScores = new ArrayList<>();
         for(Score score : scores){
-            allScores.add(
-                    new ScoreDTO(
-                            score.getId(),
-                            score.getYear(),
-                            score.getCountry().getName(),
-                            score.getIndicator().getName(),
-                            score.getScore())
-            );
+
+            if (score.getIndicator() != null && score.getCountry() != null) {
+                allScores.add(
+                        new ScoreDTO(
+                                score.getId(),
+                                score.getYear(),
+                                score.getCountry().getName(),
+                                score.getIndicator().getName(),
+                                score.getScore())
+                );
+            }
         }
         return allScores;
     }
@@ -393,7 +401,11 @@ public class AdminBusinessService {
 
     public ScoreDTO updateScore(ScoreDTO dto){
         Score score = scoreService.findById(dto.id()); //exception already handled in score service
-        score.setScore(dto.score()); //why score is getting converted from empty string to 0 (even before this)
+
+        if (score.getIndicator() == null || score.getCountry() == null) {
+            throw new CustomException("Cannot update score: Indicator or Country is missing (orphaned record)", HttpStatus.BAD_REQUEST);
+        }
+        score.setScore(dto.score());
         Score savedScore = scoreService.save(score);
         if(!rankService.findAllByYear(score.getYear()).isEmpty()){
             deleteRankingByYear(score.getYear());
@@ -403,11 +415,42 @@ public class AdminBusinessService {
     }
 
     public List<Integer> getAllIndicatorYears(){
-        return indicatorWeightService.findAll().stream()
-                .map(i -> i.getDimensionWeight().getYear())
+        List<Integer> dimensionYears = dimensionService.findAll().stream()
+                .map(Dimension::getYear)
+                .filter(Objects::nonNull)
                 .distinct()
                 .sorted(Comparator.reverseOrder())
                 .collect(Collectors.toList());
+        
+        // If no dimension years found, fallback to indicator weight years
+        if (dimensionYears.isEmpty()) {
+            dimensionYears = indicatorWeightService.findAll().stream()
+                    .filter(i -> i.getDimensionWeight() != null)
+                    .map(i -> i.getDimensionWeight().getYear())
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .sorted(Comparator.reverseOrder())
+                    .collect(Collectors.toList());
+        }
+        
+        // If still empty, provide dynamic default years from 2020 to current year
+        if (dimensionYears.isEmpty()) {
+            return generateDefaultYears();
+        }
+        
+        return dimensionYears;
+    }
+    
+    /**
+     * Generates a list of years from 2020 to the current year (descending order)
+     */
+    private List<Integer> generateDefaultYears() {
+        int currentYear = java.time.Year.now().getValue();
+        List<Integer> years = new ArrayList<>();
+        for (int year = currentYear; year >= 2020; year--) {
+            years.add(year);
+        }
+        return years;
     }
 
     public List<GetYearIndicatorsDTO> getYearIndicators(Integer  year){

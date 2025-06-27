@@ -57,18 +57,6 @@ public class AdminActionsController {
     }
 
     /**
-     * Adds a new indicator to the system.
-     * 
-     * @param indicator The indicator to add
-     * @return The created indicator
-     */
-    @PostMapping("/indicators")
-    public ResponseEntity<?> addIndicator(@Valid @RequestBody Indicator indicator) {
-        Indicator addedIndicator = adminBusinessService.addIndicator(indicator);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ResponseWrapper.success(addedIndicator));
-    }
-
-    /**
      * Adds a new indicator category to the system.
      *
      * @param dimension The indicator to add

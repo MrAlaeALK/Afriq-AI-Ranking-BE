@@ -16,9 +16,9 @@ public class IndicatorWeight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Integer  weight;
+    private Double  weight;
 
-//    private Integer  year;
+    private Integer  year;
 
     @ManyToOne
     @JsonBackReference(value="indicator-weight")

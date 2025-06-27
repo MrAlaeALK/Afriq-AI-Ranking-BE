@@ -11,4 +11,6 @@ public interface DimensionRepository extends JpaRepository<Dimension, Long> {
     Dimension findByName(String name);
     List<Dimension> findAllByOrderByDisplayOrderAsc();
     boolean existsByName(String name);
+    boolean existsByNameAndYear(String name, Integer year);
+    Dimension findByNameAndYear(String name, Integer year);
 } 

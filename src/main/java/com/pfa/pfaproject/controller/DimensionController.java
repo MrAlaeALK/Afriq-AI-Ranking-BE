@@ -1,10 +1,16 @@
 package com.pfa.pfaproject.controller;
 
+import com.pfa.pfaproject.dto.Dimension.CreateDimensionDTO;
+import com.pfa.pfaproject.dto.Dimension.UpdateDimensionDTO;
+import com.pfa.pfaproject.dto.Dimension.DimensionResponseDTO;
 import com.pfa.pfaproject.service.DimensionService;
 import com.pfa.pfaproject.service.DimensionWeightService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -12,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/dimension")
 @AllArgsConstructor
+@Validated
 public class DimensionController {
     private final DimensionService dimensionService;
     private final DimensionWeightService dimensionWeightService;
@@ -35,5 +42,65 @@ public class DimensionController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ResponseWrapper.success(dimensionWeightService.getYearDimensions(year.get("year"))));
+    }
+
+    /**
+     * Create a new dimension
+     */
+    @PostMapping("/create")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createDimension(@Valid @RequestBody CreateDimensionDTO createDimensionDTO) {
+        DimensionResponseDTO createdDimension = dimensionService.createDimension(createDimensionDTO);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseWrapper.success(createdDimension));
+    }
+
+    /**
+     * Update an existing dimension
+     */
+    @PutMapping("/update/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateDimension(@PathVariable Long id, @Valid @RequestBody UpdateDimensionDTO updateDimensionDTO) {
+        DimensionResponseDTO updatedDimension = dimensionService.updateDimension(id, updateDimensionDTO);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(updatedDimension));
+    }
+
+    /**
+     * Delete a dimension
+     */
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteDimension(@PathVariable Long id) {
+        try {
+            dimensionService.deleteDimension(id);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(ResponseWrapper.success("Dimension deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ResponseWrapper.error("Failed to delete dimension: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Normalizes dimension weights for a specific year to sum to 100%.
+     */
+    @PostMapping("/normalize-weights/{year}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> normalizeDimensionWeights(@PathVariable Integer year) {
+        dimensionWeightService.normalizeDimensionWeightsForYear(year);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success("Dimension weights normalized successfully for year " + year));
+    }
+
+    /**
+     * Normalizes dimension weights for all years to sum to 100%.
+     */
+    @PostMapping("/normalize-all-weights")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> normalizeAllDimensionWeights() {
+        dimensionWeightService.normalizeAllDimensionWeights();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success("All dimension weights normalized successfully"));
     }
 }

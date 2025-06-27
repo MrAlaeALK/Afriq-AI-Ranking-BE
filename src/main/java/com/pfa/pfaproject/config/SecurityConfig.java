@@ -40,9 +40,6 @@ import java.util.List;
  * The system uses a stateless authentication approach with JWT tokens
  * rather than session-based authentication, which is more suitable for
  * REST APIs and allows for better scalability.
- * 
- * @since 1.0
- * @version 1.1
  */
 @Configuration
 @EnableWebSecurity
@@ -88,7 +85,7 @@ public class SecurityConfig {
 //                        // All other requests need authentication
 //                        .anyRequest().authenticated())
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN") // return it to hasRole later
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().permitAll())
                 
                 // Set authentication provider
@@ -155,7 +152,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("*")); // In production, restrict to specific origins
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(false); // Since we're using JWT, not session cookies
