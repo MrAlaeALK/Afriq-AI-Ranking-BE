@@ -21,7 +21,7 @@ public class DimensionWeight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Double  dimensionWeight;
+    private Integer  dimensionWeight;
 
     private Integer  year;
 

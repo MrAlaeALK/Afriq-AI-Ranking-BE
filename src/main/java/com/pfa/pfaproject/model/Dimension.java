@@ -53,6 +53,11 @@ public class Dimension {
     @JsonManagedReference(value = "dimension-dimensionScore")
     private List<DimensionScore> dimensionScores = new ArrayList<>();
 
+    @OneToMany(mappedBy = "dimension", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference(value = "dimension-indicator")
+    @Builder.Default
+    private List<Indicator> indicators = new ArrayList<>();
+
     private LocalDateTime createdDate;
 
     private LocalDateTime lastModifiedDate;
@@ -71,5 +76,41 @@ public class Dimension {
     public void addWeight(DimensionWeight weight) {
         weights.add(weight);
         weight.setDimension(this);
+    }
+
+    /**
+     * Adds an indicator to this dimension and establishes the bidirectional relationship.
+     * @param indicator The indicator to associate with this dimension
+     */
+    public void addIndicator(Indicator indicator) {
+        indicators.add(indicator);
+        indicator.setDimension(this);
+    }
+
+    /**
+     * Removes an indicator from this dimension and clears the bidirectional relationship.
+     * @param indicator The indicator to remove from this dimension
+     */
+    public void removeIndicator(Indicator indicator) {
+        indicators.remove(indicator);
+        indicator.setDimension(null);
+    }
+
+    /**
+     * Adds a dimension score to this dimension and establishes the bidirectional relationship.
+     * @param dimensionScore The dimension score to associate with this dimension
+     */
+    public void addDimensionScore(DimensionScore dimensionScore) {
+        dimensionScores.add(dimensionScore);
+        dimensionScore.setDimension(this);
+    }
+
+    /**
+     * Removes a dimension score from this dimension and clears the bidirectional relationship.
+     * @param dimensionScore The dimension score to remove from this dimension
+     */
+    public void removeDimensionScore(DimensionScore dimensionScore) {
+        dimensionScores.remove(dimensionScore);
+        dimensionScore.setDimension(null);
     }
 }

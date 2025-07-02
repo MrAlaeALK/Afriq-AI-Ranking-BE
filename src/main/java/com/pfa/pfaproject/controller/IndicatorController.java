@@ -3,6 +3,7 @@ package com.pfa.pfaproject.controller;
 import com.pfa.pfaproject.dto.indicator.CreateIndicatorDTO;
 import com.pfa.pfaproject.dto.indicator.UpdateIndicatorDTO;
 import com.pfa.pfaproject.dto.indicator.IndicatorResponseDTO;
+import com.pfa.pfaproject.exception.CustomException;
 import com.pfa.pfaproject.model.Indicator;
 import com.pfa.pfaproject.service.IndicatorService;
 import jakarta.validation.Valid;
@@ -61,7 +62,26 @@ public class IndicatorController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createIndicator(@Valid @RequestBody CreateIndicatorDTO createIndicatorDTO) {
-        IndicatorResponseDTO createdIndicator = indicatorService.createIndicator(createIndicatorDTO);
+        try {
+            IndicatorResponseDTO createdIndicator = indicatorService.createIndicator(createIndicatorDTO);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ResponseWrapper.success(createdIndicator));
+        } catch (CustomException e) {
+            if (e.getStatus() == HttpStatus.CONFLICT && e.getMessage().contains("invalidera les classements")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(e.getMessage(), HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
+        }
+    }
+
+    /**
+     * Force creates a new indicator (bypasses ranking validation).
+     */
+    @PostMapping("/force-create")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> forceCreateIndicator(@Valid @RequestBody CreateIndicatorDTO createIndicatorDTO) {
+        IndicatorResponseDTO createdIndicator = indicatorService.forceCreateIndicator(createIndicatorDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseWrapper.success(createdIndicator));
     }
@@ -80,14 +100,35 @@ public class IndicatorController {
     }
 
     /**
-     * Deletes an indicator by ID.
+     * Deletes an indicator by ID (with ranking validation).
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteIndicator(@PathVariable Long id) {
-        indicatorService.deleteIndicator(id);
+        try {
+            indicatorService.deleteIndicator(id);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(ResponseWrapper.success("Indicateur supprimé avec succès"));
+        } catch (CustomException e) {
+            if (e.getMessage().startsWith("RANKING_EXISTS_WARNING:")) {
+                // Extract the warning message after the prefix
+                String warningMessage = e.getMessage().substring("RANKING_EXISTS_WARNING:".length());
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(warningMessage, HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
+        }
+    }
+
+    /**
+     * Force deletes an indicator by ID (bypasses ranking validation).
+     */
+    @DeleteMapping("/force/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> forceDeleteIndicator(@PathVariable Long id) {
+        indicatorService.forceDeleteIndicator(id);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseWrapper.success("Indicator deleted successfully"));
+                .body(ResponseWrapper.success("Indicateur supprimé avec succès (classements peuvent nécessiter une régénération)"));
     }
 
     /**
@@ -104,7 +145,7 @@ public class IndicatorController {
      */
     @GetMapping("/{id}/weight/{year}")
     public ResponseEntity<?> getIndicatorWeightByYear(@PathVariable Long id, @PathVariable Integer year) {
-        Double weight = indicatorService.getWeightByYear(id, year);
+        Integer weight = indicatorService.getWeightByYear(id, year);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseWrapper.success(weight));
     }
@@ -147,15 +188,14 @@ public class IndicatorController {
      */
     @GetMapping("/dimension/{dimensionId}/year/{year}/weight-total")
     public ResponseEntity<?> getDimensionWeightTotal(@PathVariable Long dimensionId, @PathVariable Integer year) {
-        double weightTotal = indicatorService.getDimensionWeightTotal(dimensionId, year);
-        double percentageTotal = Math.round(weightTotal * 1000.0) / 10.0; // Convert to percentage with 1 decimal
+        int weightTotal = indicatorService.getDimensionWeightTotal(dimensionId, year);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseWrapper.success(Map.of(
                     "dimensionId", dimensionId,
                     "year", year,
                     "weightTotal", weightTotal,
-                    "percentageTotal", percentageTotal,
-                    "remaining", Math.max(0, 100.0 - percentageTotal)
+                    "percentageTotal", weightTotal, // Already in percentage (1-100)
+                    "remaining", Math.max(0, 100 - weightTotal)
                 )));
     }
 }

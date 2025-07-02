@@ -9,8 +9,8 @@ import java.util.Optional;
 
 @Repository
 public interface CountryRepository extends JpaRepository<Country, Long> {
-    Country findByName(String name);
-    Country findByCode(String code);
+    List<Country> findByName(String name);
+    List<Country> findByCode(String code);
     List<Country> findByRegion(String region);
 }
 

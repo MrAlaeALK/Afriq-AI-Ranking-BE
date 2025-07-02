@@ -1,7 +1,7 @@
 package com.pfa.pfaproject.dto.indicator;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -18,9 +18,9 @@ public record UpdateIndicatorDTO(
 
         Long dimensionId,
 
-        @DecimalMin(value = "0.0", message = "Le poids doit être supérieur ou égal à 0.0")
-        @DecimalMax(value = "1.0", message = "Le poids doit être inférieur ou égal à 1.0")
-        Double weight,
+        @Min(value = 1, message = "Le poids doit être supérieur ou égal à 1")
+        @Max(value = 100, message = "Le poids doit être inférieur ou égal à 100")
+        Integer weight,
 
         String normalizationType
 ) {

@@ -8,9 +8,11 @@ import com.pfa.pfaproject.exception.CustomException;
 import com.pfa.pfaproject.model.Dimension;
 import com.pfa.pfaproject.model.DimensionWeight;
 import com.pfa.pfaproject.model.Indicator;
+import com.pfa.pfaproject.model.Rank;
 import com.pfa.pfaproject.repository.DimensionRepository;
 import com.pfa.pfaproject.repository.DimensionWeightRepository;
 import com.pfa.pfaproject.repository.IndicatorRepository;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing IndicatorCategory entities.
@@ -31,6 +34,7 @@ public class DimensionService {
     private final DimensionRepository dimensionRepository;
     private final DimensionWeightRepository dimensionWeightRepository;
     private final IndicatorRepository indicatorRepository;
+    private final RankService rankService;
 
     public List<Dimension> findAll() {
         return dimensionRepository.findAll();
@@ -46,11 +50,27 @@ public class DimensionService {
     }
 
     public Dimension findByName(String name) {
-        return dimensionRepository.findByName(name);
+        List<Dimension> dimensions = dimensionRepository.findByName(name);
+        if (dimensions.isEmpty()) {
+            return null;
+        }
+        if (dimensions.size() > 1) {
+            log.warn("Found {} duplicate dimensions with name '{}'. Using the first one (ID: {}). Please clean up duplicates.", 
+                    dimensions.size(), name, dimensions.get(0).getId());
+        }
+        return dimensions.get(0);
     }
 
     public Dimension findByNameAndYear(String name, Integer year) {
-        return dimensionRepository.findByNameAndYear(name, year);
+        List<Dimension> dimensions = dimensionRepository.findByNameAndYear(name, year);
+        if (dimensions.isEmpty()) {
+            return null;
+        }
+        if (dimensions.size() > 1) {
+            log.warn("Found {} duplicate dimensions with name '{}' and year {}. Using the first one (ID: {}). Please clean up duplicates.", 
+                    dimensions.size(), name, year, dimensions.get(0).getId());
+        }
+        return dimensions.get(0);
     }
 
     public boolean existsById(Long id) {
@@ -85,13 +105,49 @@ public class DimensionService {
     }
 
     /**
-     * Delete a dimension by ID
+     * Delete a dimension by ID with ranking validation
      */
     @Transactional
     public void deleteDimension(Long id) {
         Dimension dimension = findById(id);
+        
+        // Check if rankings exist for this dimension's year
+        List<Integer> affectedYears = dimension.getWeights().stream()
+                .map(DimensionWeight::getYear)
+                .distinct()
+                .toList();
+        
+        List<Integer> yearsWithRankings = new ArrayList<>();
+        for (Integer year : affectedYears) {
+            List<Rank> rankingsForYear = rankService.findAllByYear(year);
+            if (!rankingsForYear.isEmpty()) {
+                yearsWithRankings.add(year);
+            }
+        }
+        
+        if (!yearsWithRankings.isEmpty()) {
+            String yearsList = yearsWithRankings.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "));
+                    
+            throw new CustomException(
+                String.format("Cette dimension est utilisée dans les classements %s.", yearsList),
+                HttpStatus.CONFLICT
+            );
+        }
+        
         dimensionRepository.delete(dimension);
         log.info("Successfully deleted dimension '{}' (ID: {})", dimension.getName(), id);
+    }
+
+    /**
+     * Force delete a dimension by ID (bypasses ranking validation)
+     */
+    @Transactional
+    public void forceDeleteDimension(Long id) {
+        Dimension dimension = findById(id);
+        dimensionRepository.delete(dimension);
+        log.info("Force deleted dimension '{}' (ID: {}) - rankings may need regeneration", dimension.getName(), id);
     }
 
     /**
@@ -113,6 +169,16 @@ public class DimensionService {
             );
         }
         
+        // Check if rankings exist for this year
+        List<Rank> rankingsForYear = rankService.findAllByYear(createDimensionDTO.year());
+        if (!rankingsForYear.isEmpty()) {
+            throw new CustomException(
+                String.format("L'ajout de cette dimension invalidera les classements existants pour %d.", 
+                    createDimensionDTO.year()),
+                HttpStatus.CONFLICT
+            );
+        }
+        
         // Create new dimension with the year
         Dimension dimension = Dimension.builder()
                 .name(createDimensionDTO.name())
@@ -126,10 +192,59 @@ public class DimensionService {
         DimensionWeight dimensionWeight = DimensionWeight.builder()
                 .dimension(savedDimension)
                 .year(createDimensionDTO.year())
-                .dimensionWeight(createDimensionDTO.weight()) // Already in decimal format from frontend
+                .dimensionWeight(createDimensionDTO.weight()) // Direct assignment, no conversion needed
                 .build();
         
         dimensionWeightRepository.save(dimensionWeight);
+
+        return new DimensionResponseDTO(
+                savedDimension.getId(),
+                savedDimension.getName(),
+                savedDimension.getDescription(),
+                createDimensionDTO.weight(),
+                createDimensionDTO.year()
+        );
+    }
+
+    /**
+     * Force create a new dimension (bypasses ranking validation)
+     */
+    @Transactional
+    public DimensionResponseDTO forceCreateDimension(CreateDimensionDTO createDimensionDTO) {
+        // Check if dimension with same name already exists for this specific year
+        boolean dimensionExists = dimensionRepository.existsByNameAndYear(
+            createDimensionDTO.name(), 
+            createDimensionDTO.year()
+        );
+        
+        if (dimensionExists) {
+            throw new CustomException(
+                String.format("Une dimension avec le nom '%s' existe déjà pour l'année %d", 
+                    createDimensionDTO.name(), createDimensionDTO.year()), 
+                HttpStatus.CONFLICT
+            );
+        }
+        
+        // Create new dimension with the year (skip ranking validation)
+        Dimension dimension = Dimension.builder()
+                .name(createDimensionDTO.name())
+                .description(createDimensionDTO.description())
+                .year(createDimensionDTO.year())
+                .build();
+        
+        Dimension savedDimension = dimensionRepository.save(dimension);
+
+        // Create dimension weight for the specified year
+        DimensionWeight dimensionWeight = DimensionWeight.builder()
+                .dimension(savedDimension)
+                .year(createDimensionDTO.year())
+                .dimensionWeight(createDimensionDTO.weight())
+                .build();
+        
+        dimensionWeightRepository.save(dimensionWeight);
+
+        log.info("Force created dimension '{}' for year {} - existing rankings may be invalidated", 
+                savedDimension.getName(), createDimensionDTO.year());
 
         return new DimensionResponseDTO(
                 savedDimension.getId(),
@@ -173,7 +288,7 @@ public class DimensionService {
                         .year(updateDimensionDTO.year())
                         .build());
         
-        dimensionWeight.setDimensionWeight(updateDimensionDTO.weight()); // Already in decimal format from frontend
+        dimensionWeight.setDimensionWeight(updateDimensionDTO.weight()); // Direct assignment, no conversion needed
         dimensionWeightRepository.save(dimensionWeight);
 
         return new DimensionResponseDTO(

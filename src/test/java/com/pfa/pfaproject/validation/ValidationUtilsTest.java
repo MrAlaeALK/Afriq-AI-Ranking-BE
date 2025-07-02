@@ -53,9 +53,9 @@ class ValidationUtilsTest {
     @Test
     void validateIndicatorWeight_withValidWeight_shouldNotThrowException() {
         // Given: Valid weights
-        double minWeight = ValidationUtils.MIN_INDICATOR_WEIGHT;
-        double maxWeight = ValidationUtils.MAX_INDICATOR_WEIGHT;
-        double middleWeight = 0.5;
+        int minWeight = ValidationUtils.MIN_INDICATOR_WEIGHT;
+        int maxWeight = ValidationUtils.MAX_INDICATOR_WEIGHT;
+        int middleWeight = 50;
         
         // When/Then: No exceptions for valid weights
         assertDoesNotThrow(() -> ValidationUtils.validateIndicatorWeight(minWeight));
@@ -64,8 +64,8 @@ class ValidationUtilsTest {
     }
     
     @ParameterizedTest
-    @ValueSource(doubles = {-0.1, -1.0, 1.1, 1.5, 2.0})
-    void validateIndicatorWeight_withInvalidWeight_shouldThrowException(double invalidWeight) {
+    @ValueSource(ints = {0, -1, -10, 101, 150, 200})
+    void validateIndicatorWeight_withInvalidWeight_shouldThrowException(int invalidWeight) {
         // When/Then: Exception for weights outside valid range
         CustomException exception = assertThrows(CustomException.class, 
                 () -> ValidationUtils.validateIndicatorWeight(invalidWeight));

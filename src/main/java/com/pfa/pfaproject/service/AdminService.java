@@ -68,7 +68,15 @@ public class AdminService implements UserDetailsService {
      */
     public Admin findByUsername(String username) {
         log.info("Finding admin by username: {}", username);
-        return adminRepository.findByUsername(username);
+        List<Admin> admins = adminRepository.findByUsername(username);
+        if (admins.isEmpty()) {
+            return null;
+        }
+        if (admins.size() > 1) {
+            log.warn("Found {} duplicate admins with username '{}'. Using the first one (ID: {}). Please clean up duplicates.", 
+                    admins.size(), username, admins.get(0).getId());
+        }
+        return admins.get(0);
     }
 
     /**
@@ -78,7 +86,15 @@ public class AdminService implements UserDetailsService {
      */
     public Admin findByEmail(String email) {
         log.info("Finding admin by email: {}", email);
-        return adminRepository.findByEmail(email);
+        List<Admin> admins = adminRepository.findByEmail(email);
+        if (admins.isEmpty()) {
+            return null;
+        }
+        if (admins.size() > 1) {
+            log.warn("Found {} duplicate admins with email '{}'. Using the first one (ID: {}). Please clean up duplicates.", 
+                    admins.size(), email, admins.get(0).getId());
+        }
+        return admins.get(0);
     }
 
     /**
@@ -89,7 +105,15 @@ public class AdminService implements UserDetailsService {
      */
     public Admin findByUsernameOrEmail(String username, String email) {
         log.info("Finding admin by username or email: {}/{}", username, email);
-        return adminRepository.findByUsernameOrEmail(username, email);
+        List<Admin> admins = adminRepository.findByUsernameOrEmail(username, email);
+        if (admins.isEmpty()) {
+            return null;
+        }
+        if (admins.size() > 1) {
+            log.warn("Found {} duplicate admins with username '{}' or email '{}'. Using the first one (ID: {}). Please clean up duplicates.", 
+                    admins.size(), username, email, admins.get(0).getId());
+        }
+        return admins.get(0);
     }
 
     /**
@@ -140,6 +164,14 @@ public class AdminService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         log.info("User authenticated: {}", username);
-        return adminRepository.findByUsername(username);
+        List<Admin> admins = adminRepository.findByUsername(username);
+        if (admins.isEmpty()) {
+            throw new UsernameNotFoundException("User not found: " + username);
+        }
+        if (admins.size() > 1) {
+            log.warn("Found {} duplicate admins with username '{}' during authentication. Using the first one (ID: {}). Please clean up duplicates.", 
+                    admins.size(), username, admins.get(0).getId());
+        }
+        return admins.get(0);
     }
 }

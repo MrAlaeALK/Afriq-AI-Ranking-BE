@@ -1,5 +1,6 @@
 package com.pfa.pfaproject.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -45,6 +46,7 @@ public class Indicator {
     private List<Score> scores = new ArrayList<>();
 
     @ManyToOne
+    @JsonBackReference(value = "dimension-indicator")
     private Dimension dimension;
 
     @OneToMany(mappedBy = "indicator", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -78,7 +80,7 @@ public class Indicator {
     }
 
     // Get weight of the indicator for a given year
-    public Double getWeightForYear(Integer year) {
+    public Integer getWeightForYear(Integer year) {
         return weights.stream()
                 .filter(weight -> weight.getYear().equals(year))
                 .findFirst()
@@ -90,6 +92,7 @@ public class Indicator {
     public List<Integer> getAvailableYears() {
         return weights.stream()
                 .map(IndicatorWeight::getYear)
+                .filter(year -> year != null)  // Filter out null years
                 .distinct()
                 .sorted()
                 .toList();

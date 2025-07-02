@@ -4,7 +4,7 @@ public record DimensionResponseDTO(
         Long id,
         String name,
         String description,
-        Double weight,
+        Integer weight,
         Integer year
 ) {
 } 

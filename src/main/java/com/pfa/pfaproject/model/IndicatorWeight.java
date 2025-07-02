@@ -16,7 +16,7 @@ public class IndicatorWeight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Double  weight;
+    private Integer  weight;
 
     private Integer  year;
 

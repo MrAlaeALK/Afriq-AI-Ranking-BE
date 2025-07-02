@@ -3,6 +3,7 @@ package com.pfa.pfaproject.controller;
 import com.pfa.pfaproject.dto.Dimension.CreateDimensionDTO;
 import com.pfa.pfaproject.dto.Dimension.UpdateDimensionDTO;
 import com.pfa.pfaproject.dto.Dimension.DimensionResponseDTO;
+import com.pfa.pfaproject.exception.CustomException;
 import com.pfa.pfaproject.service.DimensionService;
 import com.pfa.pfaproject.service.DimensionWeightService;
 import jakarta.validation.Valid;
@@ -50,7 +51,26 @@ public class DimensionController {
     @PostMapping("/create")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createDimension(@Valid @RequestBody CreateDimensionDTO createDimensionDTO) {
-        DimensionResponseDTO createdDimension = dimensionService.createDimension(createDimensionDTO);
+        try {
+            DimensionResponseDTO createdDimension = dimensionService.createDimension(createDimensionDTO);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ResponseWrapper.success(createdDimension));
+        } catch (CustomException e) {
+            if (e.getStatus() == HttpStatus.CONFLICT && e.getMessage().contains("invalidera les classements")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(e.getMessage(), HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
+        }
+    }
+
+    /**
+     * Force create a new dimension (bypasses ranking validation)
+     */
+    @PostMapping("/force-create")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> forceCreateDimension(@Valid @RequestBody CreateDimensionDTO createDimensionDTO) {
+        DimensionResponseDTO createdDimension = dimensionService.forceCreateDimension(createDimensionDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseWrapper.success(createdDimension));
     }
@@ -67,19 +87,31 @@ public class DimensionController {
     }
 
     /**
-     * Delete a dimension
+     * Delete a dimension by ID (with ranking validation)
      */
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteDimension(@PathVariable Long id) {
         try {
             dimensionService.deleteDimension(id);
-            return ResponseEntity.status(HttpStatus.OK)
-                    .body(ResponseWrapper.success("Dimension deleted successfully"));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ResponseWrapper.error("Failed to delete dimension: " + e.getMessage()));
+            return ResponseEntity.ok(ResponseWrapper.success("Dimension supprimée avec succès"));
+        } catch (CustomException e) {
+            if (e.getMessage().startsWith("RANKING_EXISTS_WARNING:")) {
+                // Extract the warning message after the prefix
+                String warningMessage = e.getMessage().substring("RANKING_EXISTS_WARNING:".length());
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(warningMessage, HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
         }
+    }
+
+    /**
+     * Force delete a dimension by ID (bypasses ranking validation)
+     */
+    @DeleteMapping("/force-delete/{id}")
+    public ResponseEntity<?> forceDeleteDimension(@PathVariable Long id) {
+        dimensionService.forceDeleteDimension(id);
+        return ResponseEntity.ok(ResponseWrapper.success("Dimension supprimée avec succès (classements peuvent nécessiter une régénération)"));
     }
 
     /**

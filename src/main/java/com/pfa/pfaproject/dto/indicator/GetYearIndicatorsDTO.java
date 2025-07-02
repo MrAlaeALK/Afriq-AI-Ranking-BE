@@ -4,7 +4,7 @@ public record GetYearIndicatorsDTO(
         Long id,
         String name,
         String description,
-        Double  weight,
+        Integer weight,
         String dimensionName
 ) {
 }

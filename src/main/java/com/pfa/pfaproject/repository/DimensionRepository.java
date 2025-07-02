@@ -8,9 +8,9 @@ import java.util.List;
 
 @Repository
 public interface DimensionRepository extends JpaRepository<Dimension, Long> {
-    Dimension findByName(String name);
+    List<Dimension> findByName(String name);
     List<Dimension> findAllByOrderByDisplayOrderAsc();
     boolean existsByName(String name);
     boolean existsByNameAndYear(String name, Integer year);
-    Dimension findByNameAndYear(String name, Integer year);
+    List<Dimension> findByNameAndYear(String name, Integer year);
 } 

@@ -26,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -225,7 +227,7 @@ public class AdminBusinessService {
         Dimension dimension = dimensionService.findById(dto.id());
         DimensionWeight dimensionWeight = DimensionWeight.builder()
                 .year(dto.year())
-                .dimensionWeight(Double.valueOf(dto.weight()))
+                .dimensionWeight(dto.weight().intValue())
                 .dimension(dimension)
                 .build();
         return categoryWeightService.save(dimensionWeight);
@@ -234,12 +236,68 @@ public class AdminBusinessService {
     public IndicatorWeight addIndicatorWeight(AddIndicatorWeightDTO dto) {
         IndicatorWeight indicatorWeight = IndicatorWeight.builder()
                 .indicator(indicatorService.findById(dto.indicatorId()))
-                .weight(Double.valueOf(dto.weight()))
+                .weight(dto.weight().intValue())
                 .dimensionWeight(categoryWeightService.findByCategoryAndYear(dto.categoryId(), dto.year()))
+                .year(dto.year())
                 .build();
         return indicatorWeightService.save(indicatorWeight);
     }
 
+    public void clearAndSetEqualIndicatorWeights(Long dimensionId, Integer year) {
+        // Get the dimension weight for this dimension and year
+        DimensionWeight dimensionWeight = categoryWeightService.findByCategoryAndYear(dimensionId, year);
+        if (dimensionWeight == null) {
+            throw new CustomException(String.format("Aucun poids de dimension trouvé pour la dimension %d et l'année %d", dimensionId, year), HttpStatus.NOT_FOUND);
+        }
+        
+        // Get existing indicator weights for this dimension and year
+        List<IndicatorWeight> existingWeights = indicatorWeightService.findByDimensionIdAndYear(dimensionId, year);
+        
+        List<Indicator> targetIndicators;
+        
+        if (!existingWeights.isEmpty()) {
+            // Scenario 1: Indicators already have weights - redistribute them equally
+            targetIndicators = existingWeights.stream()
+                    .map(IndicatorWeight::getIndicator)
+                    .distinct()
+                    .toList();
+            
+            // Clear existing weights before redistributing
+            indicatorWeightService.deleteByDimensionIdAndYear(dimensionId, year);
+        } else {
+            // Scenario 2: Indicators exist but no weights yet - create initial equal weights
+            targetIndicators = indicatorService.findByDimensionId(dimensionId);
+            
+            if (targetIndicators.isEmpty()) {
+                throw new CustomException(String.format("Aucun indicateur trouvé pour la dimension %d", dimensionId), HttpStatus.NOT_FOUND);
+            }
+        }
+        
+        // Calculate equal weights for target indicators
+        int indicatorCount = targetIndicators.size();
+        int baseWeight = 100 / indicatorCount;
+        int remainder = 100 - (baseWeight * indicatorCount);
+        
+        // Create new indicator weights with equal distribution
+        for (int i = 0; i < targetIndicators.size(); i++) {
+            Indicator indicator = targetIndicators.get(i);
+            int weight = baseWeight;
+            
+            // Distribute remainder to first indicators to ensure exactly 100%
+            if (i < remainder) {
+                weight += 1;
+            }
+            
+            IndicatorWeight indicatorWeight = IndicatorWeight.builder()
+                    .indicator(indicator)
+                    .weight(weight)
+                    .dimensionWeight(dimensionWeight)
+                    .year(year)
+                    .build();
+            
+            indicatorWeightService.save(indicatorWeight);
+        }
+    }
 
     public void calculateDimensionScoresForCountry(Integer  year, Country country){
         // find dimensions for that year simply
@@ -253,7 +311,7 @@ public class AdminBusinessService {
             }
 
             double dimensionScore = 0;
-            double weightSum = 0;
+            int weightSum = 0;
 
             //get all indicators for that year with their weights which are related to the current dimension
             List<IndicatorWeight> indicators = dimension.getIndicatorWeights();
@@ -302,7 +360,7 @@ public class AdminBusinessService {
         List<DimensionWeight> dimensions = dimensionWeightService.findByYear(year);
 
         double finalScore = 0.0;
-        double weightSum = 0.0;
+        int weightSum = 0;
 
         for(DimensionWeight dimension : dimensions){
             DimensionScore dimensionScore = dimensionScoreService.findByCountryIdAndDimensionIdAndYear(country.getId(), dimension.getDimension().getId(), year);
@@ -535,13 +593,204 @@ public class AdminBusinessService {
             rankService.delete(rank.getId());
         }
         List<DimensionScore> dimensionScores = dimensionScoreService.findScoresByYear(year);
-        if(dimensionScores.isEmpty()){
-            throw new CustomException(String.format("Aucun score de dimension trouvé pour l'année %s", year) , HttpStatus.CONFLICT);
-        }
-        for (DimensionScore dimensionScore : dimensionScores) {
+        for(DimensionScore dimensionScore : dimensionScores){
             dimensionScoreService.delete(dimensionScore.getId());
         }
         return "Le classement a été supprimé";
+    }
+
+    /**
+     * Validates weights for a specific year with detailed feedback
+     * @param year The year to validate weights for
+     * @return Map containing detailed validation results
+     */
+    public Map<String, Object> validateWeightsForYear(Integer year) {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> validationResults = new HashMap<>();
+        Map<String, Object> indicatorValidation = new HashMap<>();
+        List<String> invalidDimensions = new ArrayList<>();
+        Map<String, Object> summary = new HashMap<>();
+        Map<String, Object> details = new HashMap<>();
+        Map<String, Object> dimensionStatus = new HashMap<>();
+        
+        boolean canGenerateRanking = true;
+        StringBuilder messageBuilder = new StringBuilder();
+        
+        try {
+            // Step 1: Get dimensions for the specific year
+            List<Dimension> dimensions = dimensionService.findAll().stream()
+                .filter(d -> d.getYear() != null && d.getYear().equals(year))
+                .collect(Collectors.toList());
+                
+            log.info("🔍 VALIDATION DEBUG - Year: {}", year);
+            log.info("🔍 VALIDATION DEBUG - Found {} dimensions for year {}", dimensions.size(), year);
+            dimensions.forEach(d -> log.info("🔍 VALIDATION DEBUG - Dimension: {} (ID: {})", d.getName(), d.getId()));
+                
+            if (dimensions.isEmpty()) {
+                log.warn("🔍 VALIDATION DEBUG - No dimensions found for year {}", year);
+                canGenerateRanking = false;
+                messageBuilder.append("Aucune dimension trouvée pour l'année ").append(year).append(". ");
+                validationResults.put("status", "invalid");
+                indicatorValidation.put("status", "invalid");
+            } else {
+                // Step 2: Check each dimension's weights
+                int validDimensions = 0;
+                int totalDimensions = dimensions.size();
+                
+                for (Dimension dimension : dimensions) {
+                    String dimensionName = dimension.getName();
+                    String dimensionId = String.valueOf(dimension.getId());
+                    
+                    Map<String, Object> dimStatus = new HashMap<>();
+                    dimStatus.put("dimensionName", dimensionName);
+                    
+                    // Get dimension weight for this year
+                    DimensionWeight dimensionWeight = dimensionWeightService.findByCategoryAndYear(dimension.getId(), year);
+                    
+                    log.info("🔍 VALIDATION DEBUG - Dimension '{}' weight lookup: {}", dimensionName, 
+                        dimensionWeight != null ? "FOUND (weight: " + dimensionWeight.getDimensionWeight() + ")" : "NOT FOUND");
+                    
+                    if (dimensionWeight == null) {
+                        invalidDimensions.add(dimensionName);
+                        dimStatus.put("isValid", false);
+                        dimStatus.put("error", "Poids de dimension manquant");
+                        messageBuilder.append("Dimension '").append(dimensionName)
+                            .append("' n'a pas de poids défini. ");
+                    } else {
+                        // Check indicator weights for this dimension
+                        List<IndicatorWeight> indicatorWeights = dimensionWeight.getIndicatorWeights();
+                        
+                        if (indicatorWeights.isEmpty()) {
+                            invalidDimensions.add(dimensionName);
+                            dimStatus.put("isValid", false);
+                            dimStatus.put("error", "Aucun indicateur trouvé");
+                            messageBuilder.append("Dimension '").append(dimensionName)
+                                .append("' n'a aucun indicateur. ");
+                        } else {
+                            int indicatorWeightSum = indicatorWeights.stream()
+                                .mapToInt(iw -> iw.getWeight() != null ? iw.getWeight() : 0)
+                                .sum();
+                                
+                            if (Math.abs(indicatorWeightSum - 100) > 1) { // Allow 1% tolerance
+                                invalidDimensions.add(dimensionName);
+                                dimStatus.put("isValid", false);
+                                dimStatus.put("error", "Poids des indicateurs = " + indicatorWeightSum + "%");
+                                messageBuilder.append("Dimension '").append(dimensionName)
+                                    .append("' : poids des indicateurs = ").append(indicatorWeightSum).append("%. ");
+                            } else {
+                                validDimensions++;
+                                dimStatus.put("isValid", true);
+                            }
+                        }
+                    }
+                    
+                    dimensionStatus.put(dimensionId, dimStatus);
+                }
+                
+                // Step 3: Validate dimension weights sum to 100%
+                List<DimensionWeight> allDimensionWeights = dimensions.stream()
+                    .map(d -> dimensionWeightService.findByCategoryAndYear(d.getId(), year))
+                    .filter(dw -> dw != null)
+                    .collect(Collectors.toList());
+                    
+                if (!allDimensionWeights.isEmpty()) {
+                    int dimensionWeightSum = allDimensionWeights.stream()
+                        .mapToInt(dw -> dw.getDimensionWeight() != null ? dw.getDimensionWeight() : 0)
+                        .sum();
+                        
+                    if (Math.abs(dimensionWeightSum - 100) > 1) { // Allow 1% tolerance for rounding
+                        canGenerateRanking = false;
+                        messageBuilder.append("Les poids des dimensions totalisent ")
+                            .append(dimensionWeightSum).append("% au lieu de 100%. ");
+                    }
+                }
+                
+                // Step 4: Check if there are scores for the year (optional validation)
+                List<Score> yearScores = scoreService.findAll().stream()
+                    .filter(score -> score.getYear() != null && score.getYear().equals(year))
+                    .collect(Collectors.toList());
+                    
+                if (yearScores.isEmpty()) {
+                    messageBuilder.append("Aucun score trouvé pour l'année ").append(year).append(". ");
+                    // Don't prevent ranking generation just because there are no scores yet
+                }
+                
+                // Final assessment
+                if (invalidDimensions.isEmpty() && canGenerateRanking) {
+                    messageBuilder.append("Validation réussie pour l'année ").append(year).append(".");
+                    validationResults.put("status", "valid");
+                    indicatorValidation.put("status", "valid");
+                } else {
+                    canGenerateRanking = false;
+                    validationResults.put("status", "invalid");
+                    indicatorValidation.put("status", "invalid");
+                    if (messageBuilder.length() == 0) {
+                        messageBuilder.append("Validation échouée pour l'année ").append(year).append(".");
+                    }
+                }
+                
+                // Build summary
+                summary.put("totalDimensions", totalDimensions);
+                summary.put("validDimensions", validDimensions);
+                summary.put("invalidDimensions", invalidDimensions.size());
+                summary.put("yearScoresCount", yearScores.size());
+            }
+            
+        } catch (Exception e) {
+            canGenerateRanking = false;
+            messageBuilder.append("Erreur lors de la validation: ").append(e.getMessage());
+            validationResults.put("status", "error");
+            validationResults.put("error", e.getMessage());
+            indicatorValidation.put("status", "error");
+            invalidDimensions.add("validation_error");
+            log.error("🔍 VALIDATION DEBUG - Exception during validation: ", e);
+        }
+        
+        // Build details object with the structure frontend expects
+        details.put("year", year);
+        details.put("dimensionStatus", dimensionStatus);
+        details.put("indicatorStatus", new HashMap<>()); // Empty for now
+        details.put("message", messageBuilder.toString());
+        details.put("invalidDimensions", invalidDimensions);
+        details.put("summary", summary);
+        
+        log.info("🔍 VALIDATION DEBUG - Final result: canGenerateRanking = {}", canGenerateRanking);
+        log.info("🔍 VALIDATION DEBUG - Invalid dimensions: {}", invalidDimensions);
+        log.info("🔍 VALIDATION DEBUG - Message: {}", messageBuilder.toString());
+        
+        // Build response
+        response.put("canGenerateRanking", canGenerateRanking);
+        response.put("message", messageBuilder.toString());
+        response.put("validationResults", validationResults);
+        response.put("indicatorValidation", indicatorValidation);
+        response.put("invalidDimensions", invalidDimensions);
+        response.put("summary", summary);
+        response.put("details", details);
+        
+        return response;
+    }
+    
+    /**
+     * Creates equal dimension weights for a list of dimensions for a specific year
+     */
+    private void createEqualDimensionWeights(List<Dimension> dimensions, Integer year) {
+        if (dimensions.isEmpty()) return;
+        
+        int baseWeight = 100 / dimensions.size();
+        int remainder = 100 % dimensions.size();
+        
+        for (int i = 0; i < dimensions.size(); i++) {
+            Dimension dimension = dimensions.get(i);
+            int weight = baseWeight + (i < remainder ? 1 : 0); // Distribute remainder
+            
+            DimensionWeight dimensionWeight = DimensionWeight.builder()
+                .dimension(dimension)
+                .year(year)
+                .dimensionWeight(weight)
+                .build();
+                
+            dimensionWeightService.save(dimensionWeight);
+        }
     }
 
 }

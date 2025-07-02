@@ -15,9 +15,9 @@ public record IndicatorResponseDTO(
         String normalizationType,
         List<Integer> availableYears,
         GetDimensionsDTO dimension,
-        Map<Integer, Double> weightsByYear, // Initial weight for the given year
-        Map<Integer, Double> effectiveWeightsByYear, // Final weight in overall ranking (dimension × indicator weight)
-        Map<Integer, Double> dimensionWeightsByYear, // Weight of the dimension itself in overall ranking (0.0-1.0)
+        Map<Integer, Integer> weightsByYear, // Weight for the given year (1-100)
+        Map<Integer, Integer> effectiveWeightsByYear, // Final weight in overall ranking (calculated)
+        Map<Integer, Integer> dimensionWeightsByYear, // Weight of the dimension itself in overall ranking (1-100)
         LocalDateTime createdDate,
         LocalDateTime lastModifiedDate
 ) {

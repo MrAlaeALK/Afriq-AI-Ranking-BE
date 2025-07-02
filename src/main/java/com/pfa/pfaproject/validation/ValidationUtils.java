@@ -22,8 +22,8 @@ public final class ValidationUtils {
 
     // Constants for validation
     public static final int MIN_VALID_YEAR = 2000;
-    public static final double MAX_INDICATOR_WEIGHT = 1.0;
-    public static final double MIN_INDICATOR_WEIGHT = 0.0;
+    public static final int MAX_INDICATOR_WEIGHT = 100;
+    public static final int MIN_INDICATOR_WEIGHT = 1;
     public static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
     public static final long  MAX_FILE_SIZE = 10 * 1024 * 1024; // default 10MB
 
@@ -59,14 +59,14 @@ public final class ValidationUtils {
     }
     
     /**
-     * Validates that an indicator weight is within acceptable range (0.0 to 1.0).
+     * Validates that an indicator weight is within acceptable range (1 to 100).
      * @param weight The weight to validate
      * @throws CustomException if the weight is invalid
      */
-    public static void validateIndicatorWeight(Double weight) {
+    public static void validateIndicatorWeight(Integer weight) {
         if (weight == null || weight < MIN_INDICATOR_WEIGHT || weight > MAX_INDICATOR_WEIGHT) {
             throw new CustomException(
-                    String.format("Weight must be between %.1f and %.1f", 
+                    String.format("Weight must be between %d and %d", 
                             MIN_INDICATOR_WEIGHT, MAX_INDICATOR_WEIGHT),
                     HttpStatus.BAD_REQUEST);
         }
