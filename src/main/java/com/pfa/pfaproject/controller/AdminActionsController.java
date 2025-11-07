@@ -1,5 +1,6 @@
 package com.pfa.pfaproject.controller;
 
+import com.pfa.pfaproject.dto.Admin.RegisterDTO;
 import com.pfa.pfaproject.dto.Rank.GenerateRankOrFinalScoreDTO;
 import com.pfa.pfaproject.dto.Score.AddOrUpdateScoreDTO;
 import com.pfa.pfaproject.dto.Score.AddScoreDTO;
@@ -49,7 +50,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/admin/dashboard")
 @AllArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminActionsController {
     private final AdminBusinessService adminBusinessService;
     private final FastApiService fastApiService;
@@ -63,10 +64,15 @@ public class AdminActionsController {
      * @param country The country to add
      * @return The created country
      */
-    @PostMapping("/countries")
+    @PostMapping("/country")
     public ResponseEntity<?> addCountry(@Valid @RequestBody Country country) {
         Country addedCountry = adminBusinessService.addCountry(country);
         return ResponseEntity.status(HttpStatus.CREATED).body(ResponseWrapper.success(addedCountry));
+    }
+
+    @PostMapping("/countries")
+    public ResponseEntity<?> addCountries(@Valid @RequestBody List<Country> countries) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ResponseWrapper.success(adminBusinessService.addCountries(countries)));
     }
 
     /**
@@ -400,5 +406,20 @@ public class AdminActionsController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ResponseWrapper.error("Error analyzing effective weights: " + e.getMessage()));
         }
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterDTO adminToRegister) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ResponseWrapper.success(adminBusinessService.register(adminToRegister)));
+    }
+
+    @PostMapping("/year_dimensions")
+    public ResponseEntity<?> getYearDimensions(@Valid @RequestBody YearRequestDTO yearRequestDTO) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.getYearDimensions(yearRequestDTO.year())));
     }
 }

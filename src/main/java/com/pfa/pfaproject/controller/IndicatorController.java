@@ -6,6 +6,7 @@ import com.pfa.pfaproject.dto.indicator.IndicatorResponseDTO;
 import com.pfa.pfaproject.exception.CustomException;
 import com.pfa.pfaproject.model.Indicator;
 import com.pfa.pfaproject.service.IndicatorService;
+import com.pfa.pfaproject.service.IndicatorWeightService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,12 +25,13 @@ import java.util.Map;
  * used to evaluate and score countries in the ranking system.
  */
 @RestController
-@RequestMapping("/api/v1/admin/dashboard/indicators")
+@RequestMapping("/api/v1/indicators")
 @AllArgsConstructor
 @Validated
-@PreAuthorize("isAuthenticated()")
+//@PreAuthorize("isAuthenticated()")
 public class IndicatorController {
     private final IndicatorService indicatorService;
+    private final IndicatorWeightService indicatorWeightService;
 
     /**
      * Retrieves all indicators in the system.
@@ -60,7 +62,7 @@ public class IndicatorController {
      * Creates a new indicator.
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> createIndicator(@Valid @RequestBody CreateIndicatorDTO createIndicatorDTO) {
         try {
             IndicatorResponseDTO createdIndicator = indicatorService.createIndicator(createIndicatorDTO);
@@ -79,7 +81,7 @@ public class IndicatorController {
      * Force creates a new indicator (bypasses ranking validation).
      */
     @PostMapping("/force-create")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> forceCreateIndicator(@Valid @RequestBody CreateIndicatorDTO createIndicatorDTO) {
         IndicatorResponseDTO createdIndicator = indicatorService.forceCreateIndicator(createIndicatorDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -90,7 +92,7 @@ public class IndicatorController {
      * Updates an existing indicator.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateIndicator(
             @PathVariable Long id,
             @Valid @RequestBody UpdateIndicatorDTO updateIndicatorDTO) {
@@ -103,7 +105,7 @@ public class IndicatorController {
      * Deletes an indicator by ID (with ranking validation).
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> deleteIndicator(@PathVariable Long id) {
         try {
             indicatorService.deleteIndicator(id);
@@ -124,7 +126,7 @@ public class IndicatorController {
      * Force deletes an indicator by ID (bypasses ranking validation).
      */
     @DeleteMapping("/force/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> forceDeleteIndicator(@PathVariable Long id) {
         indicatorService.forceDeleteIndicator(id);
         return ResponseEntity.status(HttpStatus.OK)
@@ -154,7 +156,7 @@ public class IndicatorController {
      * Bulk delete indicators.
      */
     @DeleteMapping("/bulk")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> bulkDeleteIndicators(@RequestBody List<Long> indicatorIds) {
         indicatorService.bulkDeleteIndicators(indicatorIds);
         return ResponseEntity.status(HttpStatus.OK)
@@ -165,7 +167,7 @@ public class IndicatorController {
      * Normalizes weights for a specific dimension and year to sum to 100%.
      */
     @PostMapping("/normalize/{dimensionId}/{year}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> normalizeWeights(@PathVariable Long dimensionId, @PathVariable Integer year) {
         indicatorService.normalizeWeightsForDimensionYear(dimensionId, year);
         return ResponseEntity.status(HttpStatus.OK)
@@ -176,7 +178,7 @@ public class IndicatorController {
      * Normalizes all weights across all dimensions and years to sum to 100%.
      */
     @PostMapping("/normalize-all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> normalizeAllWeights() {
         indicatorService.normalizeAllWeights();
         return ResponseEntity.status(HttpStatus.OK)
@@ -197,5 +199,12 @@ public class IndicatorController {
                     "percentageTotal", weightTotal, // Already in percentage (1-100)
                     "remaining", Math.max(0, 100 - weightTotal)
                 )));
+    }
+
+    @PostMapping("/year_indicators")
+    public ResponseEntity<?> getYearIndicators(@RequestBody Map<String, Integer> year) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(indicatorWeightService.getYearIndicators(year.get("year"))));
     }
 }

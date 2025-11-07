@@ -35,22 +35,6 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final RestTemplate restTemplate;
 
-//    @Autowired
-//    private RestTemplate restTemplate = new RestTemplate();
-
-    /**
-     * Registers a new administrator user.
-     * 
-     * @param adminToRegister DTO containing registration details with password confirmation
-     * @return JWT token for the newly registered admin
-     */
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterDTO adminToRegister) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ResponseWrapper.success(adminBusinessService.register(adminToRegister)));
-    }
-
     /**
      * Authenticates an existing administrator user.
      * 

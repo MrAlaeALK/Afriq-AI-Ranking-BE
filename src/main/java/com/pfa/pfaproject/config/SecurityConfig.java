@@ -85,7 +85,7 @@ public class SecurityConfig {
 //                        // All other requests need authentication
 //                        .anyRequest().authenticated())
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN") // return it to hasRole later
                         .anyRequest().permitAll())
                 
                 // Set authentication provider

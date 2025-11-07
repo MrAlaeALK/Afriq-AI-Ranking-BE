@@ -49,7 +49,7 @@ public class DimensionController {
      * Create a new dimension
      */
     @PostMapping("/create")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> createDimension(@Valid @RequestBody CreateDimensionDTO createDimensionDTO) {
         try {
             DimensionResponseDTO createdDimension = dimensionService.createDimension(createDimensionDTO);
@@ -68,7 +68,7 @@ public class DimensionController {
      * Force create a new dimension (bypasses ranking validation)
      */
     @PostMapping("/force-create")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> forceCreateDimension(@Valid @RequestBody CreateDimensionDTO createDimensionDTO) {
         DimensionResponseDTO createdDimension = dimensionService.forceCreateDimension(createDimensionDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -79,7 +79,7 @@ public class DimensionController {
      * Update an existing dimension
      */
     @PutMapping("/update/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateDimension(@PathVariable Long id, @Valid @RequestBody UpdateDimensionDTO updateDimensionDTO) {
         DimensionResponseDTO updatedDimension = dimensionService.updateDimension(id, updateDimensionDTO);
         return ResponseEntity.status(HttpStatus.OK)
@@ -118,7 +118,7 @@ public class DimensionController {
      * Normalizes dimension weights for a specific year to sum to 100%.
      */
     @PostMapping("/normalize-weights/{year}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> normalizeDimensionWeights(@PathVariable Integer year) {
         dimensionWeightService.normalizeDimensionWeightsForYear(year);
         return ResponseEntity.status(HttpStatus.OK)
@@ -129,7 +129,7 @@ public class DimensionController {
      * Normalizes dimension weights for all years to sum to 100%.
      */
     @PostMapping("/normalize-all-weights")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> normalizeAllDimensionWeights() {
         dimensionWeightService.normalizeAllDimensionWeights();
         return ResponseEntity.status(HttpStatus.OK)

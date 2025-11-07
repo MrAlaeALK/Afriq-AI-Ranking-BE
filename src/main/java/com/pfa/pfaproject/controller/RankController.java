@@ -36,5 +36,9 @@ public class RankController {
                 .body(ResponseWrapper.success(rankService.getDistinctYearsFromRanks()));
     }
 
-
+    @GetMapping("/ranking-years")
+    public ResponseEntity<?> getAllRankingYears() {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseWrapper.success(rankService.getDistinctYearsFromRanks()));
+    }
 }

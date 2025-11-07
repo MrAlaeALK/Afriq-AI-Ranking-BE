@@ -6,6 +6,7 @@ import com.pfa.pfaproject.dto.Admin.LoginDTO;
 import com.pfa.pfaproject.dto.Admin.LoginResponseDTO;
 import com.pfa.pfaproject.dto.Admin.RefreshRequestDTO;
 import com.pfa.pfaproject.dto.Admin.RegisterDTO;
+import com.pfa.pfaproject.dto.Dimension.GetYearDimensionsDTO;
 import com.pfa.pfaproject.dto.Rank.GenerateRankOrFinalScoreDTO;
 import com.pfa.pfaproject.dto.Score.AddOrUpdateScoreDTO;
 import com.pfa.pfaproject.dto.Score.AddScoreDTO;
@@ -16,6 +17,7 @@ import com.pfa.pfaproject.dto.Weight.AddWeightDTO;
 import com.pfa.pfaproject.dto.indicator.GetYearIndicatorsDTO;
 import com.pfa.pfaproject.exception.CustomException;
 import com.pfa.pfaproject.model.*;
+import com.pfa.pfaproject.model.enumeration.Role;
 import com.pfa.pfaproject.validation.ValidationUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +69,7 @@ public class AdminBusinessService {
     public LoginResponseDTO register(RegisterDTO adminToRegisterDTO) {
 
         if (adminService.existsByUsernameOrEmail(adminToRegisterDTO.username(), adminToRegisterDTO.email())) {
-            throw new CustomException("Admin already exists", HttpStatus.CONFLICT);
+            throw new CustomException("Un administrateur avec ce nom d'utilisateur ou adresse email existe déjà", HttpStatus.CONFLICT);
         }
 
         Admin admin = Admin.builder()
@@ -76,6 +78,7 @@ public class AdminBusinessService {
                 .firstName(adminToRegisterDTO.firstName())
                 .lastName(adminToRegisterDTO.lastName())
                 .password(passwordEncoder.encode(adminToRegisterDTO.password()))
+                .role(adminToRegisterDTO.role() != null ? adminToRegisterDTO.role() : Role.ADMIN)
                 .build();
 
         adminService.save(admin);
@@ -103,11 +106,11 @@ public class AdminBusinessService {
 //                : adminService.findByUsername(adminToLogin.usernameOrEmail());
 
         if (admin == null) {
-            throw new CustomException("Username or password is incorrect", HttpStatus.UNAUTHORIZED);
+            throw new CustomException("Le nom d'utilisateur ou le mot de passe est incorrect", HttpStatus.UNAUTHORIZED);
         }
 
         if (!passwordEncoder.matches(adminToLogin.password(), admin.getPassword())) {
-            throw new CustomException("Username or password is incorrect", HttpStatus.UNAUTHORIZED);
+            throw new CustomException("Le nom d'utilisateur ou le mot de passe est incorrect", HttpStatus.UNAUTHORIZED);
         }
         String refreshToken = jwtUtil.generateRefreshToken(admin.getUsername(), admin.getAuthorities());
         String accessToken = jwtUtil.generateToken(admin.getUsername(), admin.getAuthorities());
@@ -143,6 +146,14 @@ public class AdminBusinessService {
 
         Country savedCountry = countryService.save(country);
         return savedCountry;
+    }
+
+    public List<Country> addCountries(List<Country> countries) {
+        List<Country> savedCountries = new ArrayList<>();
+        for (Country country : countries) {
+            savedCountries.add(addCountry(country));
+        }
+        return savedCountries;
     }
 
     /**
@@ -791,6 +802,10 @@ public class AdminBusinessService {
                 
             dimensionWeightService.save(dimensionWeight);
         }
+    }
+
+    public List<GetYearDimensionsDTO> getYearDimensions(Integer  year){
+        return dimensionWeightService.getYearDimensions(year);
     }
 
 }
