@@ -3,7 +3,6 @@ package com.pfa.pfaproject.config;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -24,7 +23,7 @@ public class DataSourceConfig {
 
     @Bean
     @Primary
-    public DataSource dataSource(DataSourceProperties properties) {
+    public DataSource dataSource() {
         // ALWAYS read DATABASE_URL directly from environment (bypasses application.properties)
         // This ensures we get the raw postgres:// URL from Render before Spring Boot processes it
         String databaseUrl = System.getenv("DATABASE_URL");
@@ -107,10 +106,10 @@ public class DataSourceConfig {
             config.setJdbcUrl(databaseUrl);
             config.setUsername(System.getenv("DATABASE_USERNAME") != null ? 
                 System.getenv("DATABASE_USERNAME") : 
-                environment.getProperty("DATABASE_USERNAME", properties.getUsername()));
+                environment.getProperty("DATABASE_USERNAME", "postgres"));
             config.setPassword(System.getenv("DATABASE_PASSWORD") != null ? 
                 System.getenv("DATABASE_PASSWORD") : 
-                environment.getProperty("DATABASE_PASSWORD", properties.getPassword()));
+                environment.getProperty("DATABASE_PASSWORD", ""));
             config.setDriverClassName("org.postgresql.Driver");
             config.setMaximumPoolSize(10);
             config.setMinimumIdle(2);
@@ -121,11 +120,50 @@ public class DataSourceConfig {
             return new HikariDataSource(config);
         }
         
-        // Fall back to default Spring Boot DataSource configuration
-        System.out.println("⚠️  Using default Spring Boot DataSource configuration");
-        return properties.initializeDataSourceBuilder()
-                .type(HikariDataSource.class)
-                .build();
+        // Fall back: use properties from application.properties or environment
+        // This handles local development when DATABASE_URL might not be set
+        String url = environment.getProperty("spring.datasource.url", "jdbc:postgresql://localhost:5432/afriq_ai_ranking");
+        String username = environment.getProperty("spring.datasource.username", "postgres");
+        String password = environment.getProperty("spring.datasource.password", "");
+        
+        // If URL from properties is still in postgres:// format, convert it
+        if (url != null && url.startsWith("postgres://")) {
+            try {
+                URI dbUri = new URI(url);
+                String userInfo = dbUri.getUserInfo();
+                if (userInfo != null) {
+                    int colonIndex = userInfo.indexOf(':');
+                    if (colonIndex != -1) {
+                        username = userInfo.substring(0, colonIndex);
+                        password = java.net.URLDecoder.decode(userInfo.substring(colonIndex + 1), java.nio.charset.StandardCharsets.UTF_8);
+                    }
+                }
+                String host = dbUri.getHost();
+                int port = dbUri.getPort() == -1 ? 5432 : dbUri.getPort();
+                String database = dbUri.getPath();
+                if (database != null && database.startsWith("/")) {
+                    database = database.substring(1);
+                }
+                url = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+                System.out.println("✅ Converted postgres:// URL from properties to JDBC format");
+            } catch (Exception e) {
+                System.err.println("❌ Error converting URL from properties: " + e.getMessage());
+            }
+        }
+        
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(url);
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setDriverClassName("org.postgresql.Driver");
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+        config.setMaxLifetime(1800000);
+        
+        System.out.println("⚠️  Using fallback DataSource configuration from properties");
+        return new HikariDataSource(config);
     }
 }
 
