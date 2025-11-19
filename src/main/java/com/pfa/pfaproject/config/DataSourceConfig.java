@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -25,13 +24,22 @@ public class DataSourceConfig {
 
     @Bean
     @Primary
-    @ConfigurationProperties("spring.datasource.hikari")
     public DataSource dataSource(DataSourceProperties properties) {
-        // Read DATABASE_URL from environment (Render sets this)
-        String databaseUrl = environment.getProperty("DATABASE_URL");
-        if (databaseUrl == null) {
-            databaseUrl = System.getenv("DATABASE_URL");
+        // ALWAYS read DATABASE_URL directly from environment (bypasses application.properties)
+        // This ensures we get the raw postgres:// URL from Render before Spring Boot processes it
+        String databaseUrl = System.getenv("DATABASE_URL");
+        
+        // If not in environment, check system property (set by EnvironmentConfig)
+        if (databaseUrl == null || databaseUrl.isEmpty()) {
+            databaseUrl = System.getProperty("DATABASE_URL");
         }
+        
+        // If still not found, check Spring Environment (last resort)
+        if (databaseUrl == null || databaseUrl.isEmpty()) {
+            databaseUrl = environment.getProperty("DATABASE_URL");
+        }
+        
+        System.out.println("🔍 DataSourceConfig: DATABASE_URL = " + (databaseUrl != null ? databaseUrl.substring(0, Math.min(50, databaseUrl.length())) + "..." : "null"));
         
         // If DATABASE_URL is provided and starts with postgres://, convert it
         if (databaseUrl != null && !databaseUrl.isEmpty() && databaseUrl.startsWith("postgres://")) {
@@ -93,7 +101,28 @@ public class DataSourceConfig {
             }
         }
         
+        // If DATABASE_URL is already in JDBC format, use it directly
+        if (databaseUrl != null && databaseUrl.startsWith("jdbc:postgresql://")) {
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(databaseUrl);
+            config.setUsername(System.getenv("DATABASE_USERNAME") != null ? 
+                System.getenv("DATABASE_USERNAME") : 
+                environment.getProperty("DATABASE_USERNAME", properties.getUsername()));
+            config.setPassword(System.getenv("DATABASE_PASSWORD") != null ? 
+                System.getenv("DATABASE_PASSWORD") : 
+                environment.getProperty("DATABASE_PASSWORD", properties.getPassword()));
+            config.setDriverClassName("org.postgresql.Driver");
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setConnectionTimeout(30000);
+            config.setIdleTimeout(600000);
+            config.setMaxLifetime(1800000);
+            System.out.println("✅ Using JDBC URL directly");
+            return new HikariDataSource(config);
+        }
+        
         // Fall back to default Spring Boot DataSource configuration
+        System.out.println("⚠️  Using default Spring Boot DataSource configuration");
         return properties.initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
                 .build();
