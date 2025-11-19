@@ -40,8 +40,9 @@ public class DataSourceConfig {
         
         System.out.println("🔍 DataSourceConfig: DATABASE_URL = " + (databaseUrl != null ? databaseUrl.substring(0, Math.min(50, databaseUrl.length())) + "..." : "null"));
         
-        // If DATABASE_URL is provided and starts with postgres://, convert it
-        if (databaseUrl != null && !databaseUrl.isEmpty() && databaseUrl.startsWith("postgres://")) {
+        // If DATABASE_URL is provided and starts with postgres:// or postgresql:// (without jdbc:), convert it
+        if (databaseUrl != null && !databaseUrl.isEmpty() && 
+            (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://"))) {
             try {
                 // Parse postgres:// URL
                 URI dbUri = new URI(databaseUrl);
@@ -102,6 +103,7 @@ public class DataSourceConfig {
         
         // If DATABASE_URL is already in JDBC format, use it directly
         if (databaseUrl != null && databaseUrl.startsWith("jdbc:postgresql://")) {
+            System.out.println("✅ DATABASE_URL is already in JDBC format");
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(databaseUrl);
             config.setUsername(System.getenv("DATABASE_USERNAME") != null ? 
@@ -122,12 +124,22 @@ public class DataSourceConfig {
         
         // Fall back: use properties from application.properties or environment
         // This handles local development when DATABASE_URL might not be set
+        // Use getProperty with ignoreUnresolvablePlaceholders to avoid errors when placeholders don't exist
         String url = environment.getProperty("spring.datasource.url", "jdbc:postgresql://localhost:5432/afriq_ai_ranking");
         String username = environment.getProperty("spring.datasource.username", "postgres");
-        String password = environment.getProperty("spring.datasource.password", "");
+        // Don't try to resolve DATABASE_PASSWORD placeholder - it may not exist as separate env var
+        String password = "";
+        try {
+            String passwordProp = environment.getProperty("spring.datasource.password");
+            if (passwordProp != null && !passwordProp.startsWith("${")) {
+                password = passwordProp;
+            }
+        } catch (Exception e) {
+            // Ignore - use empty password
+        }
         
-        // If URL from properties is still in postgres:// format, convert it
-        if (url != null && url.startsWith("postgres://")) {
+        // If URL from properties is still in postgres:// or postgresql:// format, convert it
+        if (url != null && (url.startsWith("postgres://") || url.startsWith("postgresql://"))) {
             try {
                 URI dbUri = new URI(url);
                 String userInfo = dbUri.getUserInfo();
