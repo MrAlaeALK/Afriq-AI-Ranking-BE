@@ -18,7 +18,7 @@ public class IndicatorWeight {
 
     private Integer  weight;
 
-//    private Integer  year;
+    private Integer  year;
 
     @ManyToOne
     @JsonBackReference(value="indicator-weight")

@@ -1,6 +1,7 @@
 package com.pfa.pfaproject.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.pfa.pfaproject.model.enumeration.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -73,13 +74,13 @@ public class Admin implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-//    @NotBlank(message = "First name is required")
+    //    @NotBlank(message = "First name is required")
     private String firstName;
 
-//    @NotBlank(message = "Last name is required")
+    //    @NotBlank(message = "Last name is required")
     private String lastName;
 
-//    @NotBlank(message = "Username is required")
+    //    @NotBlank(message = "Username is required")
 //    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
 //    @Column(nullable = false)
     @Column(unique = true)
@@ -91,11 +92,14 @@ public class Admin implements UserDetails {
 //    @Column(nullable = false)
     private String password;
 
-//    @NotBlank(message = "Email is required")
+    //    @NotBlank(message = "Email is required")
 //    @Email(message = "Email should be valid")
 //    @Column(nullable = false)
     @Column(unique = true)
     private String email;
+
+    @Enumerated(EnumType.STRING)
+    private Role role;
 
     @Builder.Default
     private boolean accountNonExpired = true;
@@ -109,10 +113,10 @@ public class Admin implements UserDetails {
     @Builder.Default
     private boolean enabled = true;
 
-//    @Column(name = "created_date")
+    //    @Column(name = "created_date")
     private LocalDateTime createdDate;
 
-//    @Column(name = "last_modified_date")
+    //    @Column(name = "last_modified_date")
     private LocalDateTime lastModifiedDate;
 
     @PrePersist
@@ -128,6 +132,6 @@ public class Admin implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
     }
 }

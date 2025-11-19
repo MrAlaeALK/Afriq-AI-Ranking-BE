@@ -65,8 +65,15 @@ public class CountryService {
      * @throws CustomException if country is not found
      */
     public Country findByName(String name) {
-        return countryRepository.findByName(name);
-//                .orElseThrow(() -> new CustomException("Country not found", HttpStatus.NOT_FOUND));
+        List<Country> countries = countryRepository.findByName(name);
+        if (countries.isEmpty()) {
+            return null;
+        }
+        if (countries.size() > 1) {
+            log.warn("Found {} duplicate countries with name '{}'. Using the first one (ID: {}). Please clean up duplicates.", 
+                    countries.size(), name, countries.get(0).getId());
+        }
+        return countries.get(0);
     }
 
     /**
@@ -76,9 +83,15 @@ public class CountryService {
      * @throws CustomException if country is not found
      */
     public Country findByCode(String code) {
-
-        return countryRepository.findByCode(code);
-//                .orElseThrow(() -> new CustomException(" Country not found", HttpStatus.NOT_FOUND));
+        List<Country> countries = countryRepository.findByCode(code);
+        if (countries.isEmpty()) {
+            return null;
+        }
+        if (countries.size() > 1) {
+            log.warn("Found {} duplicate countries with code '{}'. Using the first one (ID: {}). Please clean up duplicates.", 
+                    countries.size(), code, countries.get(0).getId());
+        }
+        return countries.get(0);
     }
 
     /**

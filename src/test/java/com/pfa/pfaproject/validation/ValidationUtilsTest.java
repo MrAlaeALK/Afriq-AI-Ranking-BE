@@ -64,11 +64,21 @@ class ValidationUtilsTest {
     }
     
     @ParameterizedTest
-    @ValueSource(ints = {0, -1, 101, 150})
+    @ValueSource(ints = {0, -1, -10, 101, 150, 200})
     void validateIndicatorWeight_withInvalidWeight_shouldThrowException(int invalidWeight) {
         // When/Then: Exception for weights outside valid range
         CustomException exception = assertThrows(CustomException.class, 
                 () -> ValidationUtils.validateIndicatorWeight(invalidWeight));
+        
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertTrue(exception.getMessage().contains("Weight must be between"));
+    }
+    
+    @Test
+    void validateIndicatorWeight_withNullWeight_shouldThrowException() {
+        // When/Then: Exception for null weight
+        CustomException exception = assertThrows(CustomException.class, 
+                () -> ValidationUtils.validateIndicatorWeight(null));
         
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         assertTrue(exception.getMessage().contains("Weight must be between"));

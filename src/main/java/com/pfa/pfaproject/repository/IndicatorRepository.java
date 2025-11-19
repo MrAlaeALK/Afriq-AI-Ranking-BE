@@ -9,7 +9,8 @@ import java.util.Optional;
 
 @Repository
 public interface IndicatorRepository extends JpaRepository<Indicator, Long> {
-    Indicator findByName(String name);
-    List<Indicator> findByNormalizationType(String normalizationType);
+    List<Indicator> findByName(String name);
+    List<Indicator> findByDimensionId(Long dimensionId);
+    long countByDimensionId(Long dimensionId);
 }
 

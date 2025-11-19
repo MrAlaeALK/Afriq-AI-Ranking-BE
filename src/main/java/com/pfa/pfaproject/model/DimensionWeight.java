@@ -13,6 +13,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"dimension_id", "year"})
+})
 public class DimensionWeight {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

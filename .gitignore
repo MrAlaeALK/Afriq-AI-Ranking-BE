@@ -32,5 +32,15 @@ build/
 ### VS Code ###
 .vscode/
 
-### application.properties ###
-application.properties
+### Environment and Configuration Files ###
+# Ignore actual environment file with secrets
+.env
+.env.local
+.env.production
+
+# Ignore application.properties if it contains secrets (keep template in git)
+# application.properties
+
+# Keep these in git for reference
+!env.example
+!src/main/resources/application.properties.example

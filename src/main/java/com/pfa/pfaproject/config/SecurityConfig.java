@@ -2,14 +2,13 @@ package com.pfa.pfaproject.config;
 
 import com.pfa.pfaproject.config.JWT.JwtFilter;
 import com.pfa.pfaproject.service.AdminService;
-import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -26,40 +25,22 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Security Configuration for the Afriq-AI Ranking system.
- * ===========================================================
- * 
- * This class configures Spring Security for the application, including:
- * - JWT-based stateless authentication
- * - URL-based authorization rules
- * - CORS and CSRF settings
- * - Security headers
- * - Password encoding
- * 
- * The system uses a stateless authentication approach with JWT tokens
- * rather than session-based authentication, which is more suitable for
- * REST APIs and allows for better scalability.
- * 
- * @since 1.0
- * @version 1.1
- */
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@AllArgsConstructor
 public class SecurityConfig {
     private final AdminService adminService;
     private final JwtFilter jwtFilter;
     
-    /**
-     * Configures the security filter chain with authorization rules,
-     * authentication providers, and security features.
-     * 
-     * @param http The HttpSecurity to configure
-     * @return The configured SecurityFilterChain
-     * @throws Exception if configuration fails
-     */
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+    
+    public SecurityConfig(AdminService adminService, JwtFilter jwtFilter) {
+        this.adminService = adminService;
+        this.jwtFilter = jwtFilter;
+    }
+    
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -78,17 +59,8 @@ public class SecurityConfig {
                 
                 // Configure authorization rules
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        // Public endpoints
-//                        .requestMatchers("/api/v1/auth/**").permitAll()
-//                        .requestMatchers("/actuator/health").permitAll()
-//                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-//                        // Protected endpoints
-//                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-//                        .requestMatchers("/api/v1/countries/**", "/api/v1/indicators/**").authenticated()
-//                        // All other requests need authentication
-//                        .anyRequest().authenticated())
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN") // return it to hasRole later
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN") // return it to hasRole later
                         .anyRequest().permitAll())
                 
                 // Set authentication provider
@@ -104,19 +76,12 @@ public class SecurityConfig {
                 .build();
     }
 
-    /**
-     * Creates a password encoder bean for securely hashing passwords.
-     * @return BCryptPasswordEncoder instance
-     */
+    // Password encoder bean for securely hashing passwords
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Configures and returns the authentication provider.
-     * @return The configured authentication provider
-     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -125,21 +90,11 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    /**
-     * Creates a RestTemplate bean for making HTTP requests.
-     * @return RestTemplate instance
-     */
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
 
-    /**
-     * Creates the authentication manager.
-     * @param http The HttpSecurity to get the shared objects from
-     * @return The configured authentication manager
-     * @throws Exception if configuration fails
-     */
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         AuthenticationManagerBuilder auth = http.getSharedObject(AuthenticationManagerBuilder.class);
@@ -149,37 +104,34 @@ public class SecurityConfig {
     
     /**
      * Configures CORS settings for the application.
+     * Uses environment variable FRONTEND_URL to allow specific origins.
+     * In development: http://localhost:5173
+     * In production: https://your-frontend-app.netlify.app (For example)
+     * 
      * @return The CORS configuration source
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // In production, restrict to specific origins
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        
+        // Allow specific frontend URL from environment variable
+        List<String> allowedOrigins = Arrays.asList(frontendUrl.split(","));
+        configuration.setAllowedOrigins(allowedOrigins);
+        
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        
         configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowCredentials(false); // Since we're using JWT, not session cookies
-        configuration.setMaxAge(3600L); // 1 hour
+        
+        // Don't allow credentials since we're using JWT in Authorization header
+        configuration.setAllowCredentials(false);
+        
+        // Cache preflight requests for 1 hour
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
-    //for future use (httpOnly cookie for refresh token)
-//    @Bean
-//    public CorsConfigurationSource corsConfigurationSource() {
-//        CorsConfiguration configuration = new CorsConfiguration();
-//        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // In production, restrict to specific origins
-//        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-//        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Cookie"));
-//        configuration.setExposedHeaders(List.of("Authorization"));
-//        configuration.setAllowCredentials(true); // Since we're using JWT, not session cookies
-//        configuration.setMaxAge(3600L); // 1 hour
-//
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        source.registerCorsConfiguration("/**", configuration);
-//        return source;
-//    }
-//}
-
