@@ -1,57 +1,42 @@
 package com.pfa.pfaproject.config;
 
-import io.github.cdimascio.dotenv.Dotenv;
-import jakarta.annotation.PostConstruct;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment;
 
+import javax.sql.DataSource;
 import java.net.URI;
 
 /**
- * Loads environment variables from .env file in development.
- * In production (Render), environment variables are set via dashboard
- * and this will be skipped.
- * Also converts postgres:// URLs to jdbc:postgresql:// format for Spring Boot.
+ * DataSource configuration that handles both JDBC and postgres:// URL formats.
+ * Converts Render's postgres:// URL format to jdbc:postgresql:// format.
  */
 @Configuration
-public class EnvironmentConfig {
+public class DataSourceConfig {
 
-    @PostConstruct
-    public void loadEnvironmentVariables() {
-        try {
-            // Load .env file if it exists (development)
-            // In production (Render), this will be ignored
-            Dotenv dotenv = Dotenv.configure()
-                    .ignoreIfMissing()  // Don't fail if .env doesn't exist
-                    .load();
-            
-            // Set system properties from .env file
-            dotenv.entries().forEach(entry -> {
-                // Only set if not already set by system/Render
-                if (System.getProperty(entry.getKey()) == null) {
-                    System.setProperty(entry.getKey(), entry.getValue());
-                }
-            });
-            
-            System.out.println("✅ Environment variables loaded from .env file");
-        } catch (Exception e) {
-            // Silent fail - .env is optional (Render sets vars directly)
-            System.out.println("ℹ️  No .env file found - using system environment variables");
-        }
-        
-        // Convert postgres:// URL to jdbc:postgresql:// format if needed
-        convertDatabaseUrl();
-    }
-    
-    private void convertDatabaseUrl() {
-        String databaseUrl = System.getenv("DATABASE_URL");
+    @Autowired
+    private Environment environment;
+
+    @Bean
+    @Primary
+    @ConfigurationProperties("spring.datasource.hikari")
+    public DataSource dataSource(DataSourceProperties properties) {
+        // Read DATABASE_URL from environment (Render sets this)
+        String databaseUrl = environment.getProperty("DATABASE_URL");
         if (databaseUrl == null) {
-            databaseUrl = System.getProperty("DATABASE_URL");
+            databaseUrl = System.getenv("DATABASE_URL");
         }
         
-        if (databaseUrl != null && databaseUrl.startsWith("postgres://")) {
+        // If DATABASE_URL is provided and starts with postgres://, convert it
+        if (databaseUrl != null && !databaseUrl.isEmpty() && databaseUrl.startsWith("postgres://")) {
             try {
                 // Parse postgres:// URL
-                // Format: postgres://username:password@host:port/database
                 URI dbUri = new URI(databaseUrl);
                 
                 // Extract user info (username:password)
@@ -60,7 +45,7 @@ public class EnvironmentConfig {
                     throw new IllegalArgumentException("DATABASE_URL missing user info");
                 }
                 
-                // Split username and password (password may contain special chars)
+                // Split username and password
                 int colonIndex = userInfo.indexOf(':');
                 if (colonIndex == -1) {
                     throw new IllegalArgumentException("DATABASE_URL user info format invalid");
@@ -82,21 +67,36 @@ public class EnvironmentConfig {
                 // Convert to JDBC URL format
                 String jdbcUrl = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
                 
-                // Set as system properties for Spring Boot to use
-                System.setProperty("DATABASE_URL", jdbcUrl);
-                System.setProperty("DATABASE_USERNAME", username);
-                System.setProperty("DATABASE_PASSWORD", password);
+                // Create HikariCP configuration
+                HikariConfig config = new HikariConfig();
+                config.setJdbcUrl(jdbcUrl);
+                config.setUsername(username);
+                config.setPassword(password);
+                config.setDriverClassName("org.postgresql.Driver");
+                
+                // Connection pool settings
+                config.setMaximumPoolSize(10);
+                config.setMinimumIdle(2);
+                config.setConnectionTimeout(30000);
+                config.setIdleTimeout(600000);
+                config.setMaxLifetime(1800000);
                 
                 System.out.println("✅ Converted postgres:// URL to JDBC format");
                 System.out.println("   Host: " + host + ":" + port);
                 System.out.println("   Database: " + database);
-                System.out.println("   Username: " + username);
+                
+                return new HikariDataSource(config);
             } catch (Exception e) {
                 System.err.println("❌ Error converting DATABASE_URL: " + e.getMessage());
                 e.printStackTrace();
                 throw new RuntimeException("Failed to convert DATABASE_URL from postgres:// to jdbc:postgresql:// format", e);
             }
         }
+        
+        // Fall back to default Spring Boot DataSource configuration
+        return properties.initializeDataSourceBuilder()
+                .type(HikariDataSource.class)
+                .build();
     }
 }
 
