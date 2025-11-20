@@ -4,18 +4,14 @@ import com.pfa.pfaproject.dto.Admin.*;
 import com.pfa.pfaproject.model.Admin;
 import com.pfa.pfaproject.service.AdminBusinessService;
 import com.pfa.pfaproject.service.PasswordResetService;
-import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;
-import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-
-import java.time.Duration;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * Controller handling authentication operations for the Afriq-AI Ranking system.
@@ -29,11 +25,22 @@ import java.time.Duration;
  */
 @RestController
 @RequestMapping("/api/v1/auth")
-@AllArgsConstructor
 public class AuthController {
     private final AdminBusinessService adminBusinessService;
     private final PasswordResetService passwordResetService;
     private final RestTemplate restTemplate;
+    
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+    
+    @Autowired
+    public AuthController(AdminBusinessService adminBusinessService, 
+                         PasswordResetService passwordResetService,
+                         RestTemplate restTemplate) {
+        this.adminBusinessService = adminBusinessService;
+        this.passwordResetService = passwordResetService;
+        this.restTemplate = restTemplate;
+    }
 
     /**
      * Authenticates an existing administrator user.
@@ -106,14 +113,15 @@ public class AuthController {
             // Get admin details for email
             Admin admin = passwordResetService.getAdminByToken(resetToken);
             if (admin != null) {
-                // Send password reset email via EmailController
-                String emailServiceUrl = "http://localhost:8080/api/email/send-password-reset";
+                String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+                String emailServiceUrl = baseUrl + "/api/email/send-password-reset";
+                
                 String requestUrl = String.format("%s?adminEmail=%s&adminName=%s&resetToken=%s&frontendBaseUrl=%s",
                         emailServiceUrl,
                         admin.getEmail(),
                         admin.getFirstName() + " " + admin.getLastName(),
                         resetToken,
-                        "http://localhost:5173"
+                        frontendUrl  // Use injected frontend URL from environment
                 );
 
                 ResponseEntity<String> emailResponse = restTemplate.postForEntity(requestUrl, null, String.class);
@@ -130,6 +138,9 @@ public class AuthController {
             return ResponseEntity.ok(ResponseWrapper.success("If the email exists in our system, a reset link will be sent."));
 
         } catch (Exception e) {
+            // Log the error for debugging (but don't expose to user)
+            System.err.println("Error in forgot-password: " + e.getMessage());
+            e.printStackTrace();
             // Always return success message for security
             return ResponseEntity.ok(ResponseWrapper.success("If the email exists in our system, a reset link will be sent."));
         }
