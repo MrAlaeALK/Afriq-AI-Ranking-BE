@@ -8,7 +8,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copy source code and build
+# Copy source code and build skipping tests
 COPY src ./src
 RUN mvn clean package -DskipTests
 
@@ -23,23 +23,15 @@ RUN addgroup -S spring && adduser -S spring -G spring
 # Copy the built JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Create upload directory
+# Create upload directory with proper ownership
 RUN mkdir -p /app/uploads && chown -R spring:spring /app
 
 # Switch to non-root user
 USER spring:spring
 
-# Expose port (Render will override with $PORT)
+# Expose default Spring port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/actuator/health || exit 1
-
 # Run the application
-ENTRYPOINT ["java", \
-    "-Djava.security.egd=file:/dev/./urandom", \
-    "-Dserver.port=${PORT}", \
-    "-jar", \
-    "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
 

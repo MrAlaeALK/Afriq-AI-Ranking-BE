@@ -78,7 +78,7 @@ public class EmailController {
             @RequestParam(defaultValue = "http://localhost:5173") String frontendBaseUrl) {
         try {
             // Prepare the reset link
-            String resetLink = frontendBaseUrl + "/reset-password?token=" + resetToken;
+            String resetLink = frontendBaseUrl + "/ranking/reset-password?token=" + resetToken;
 
             // Prepare Thymeleaf context with password reset data
             final Context ctx = new Context(Locale.getDefault());
