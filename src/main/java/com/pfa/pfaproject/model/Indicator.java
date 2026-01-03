@@ -88,6 +88,15 @@ public class Indicator {
                 .orElse(null);
     }
 
+    // Get weight - returns first available weight (for method reference compatibility)
+    // Note: Prefer using getWeightForYear(Integer year) for year-specific weights
+    public Integer getWeight() {
+        return weights.stream()
+                .findFirst()
+                .map(IndicatorWeight::getWeight)
+                .orElse(null);
+    }
+
     // Get years that contains weight
     public List<Integer> getAvailableYears() {
         return weights.stream()

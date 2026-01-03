@@ -59,8 +59,12 @@ public class SecurityConfig {
                 
                 // Configure authorization rules
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
+                        // Public endpoints
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Protected endpoints
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN") // return it to hasRole later
+                        // All other requests
                         .anyRequest().permitAll())
                 
                 // Set authentication provider
