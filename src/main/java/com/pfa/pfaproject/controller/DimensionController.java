@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -81,9 +82,17 @@ public class DimensionController {
     @PutMapping("/update/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> updateDimension(@PathVariable Long id, @Valid @RequestBody UpdateDimensionDTO updateDimensionDTO) {
-        DimensionResponseDTO updatedDimension = dimensionService.updateDimension(id, updateDimensionDTO);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseWrapper.success(updatedDimension));
+        try {
+            DimensionResponseDTO updatedDimension = dimensionService.updateDimension(id, updateDimensionDTO);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(ResponseWrapper.success(updatedDimension));
+        } catch (CustomException e) {
+            if (e.getStatus() == HttpStatus.CONFLICT && e.getMessage().contains("utilisée dans les classements")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(e.getMessage(), HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
+        }
     }
 
     /**
@@ -94,6 +103,26 @@ public class DimensionController {
         try {
             dimensionService.deleteDimension(id);
             return ResponseEntity.ok(ResponseWrapper.success("Dimension supprimée avec succès"));
+        } catch (CustomException e) {
+            if (e.getMessage().startsWith("RANKING_EXISTS_WARNING:")) {
+                // Extract the warning message after the prefix
+                String warningMessage = e.getMessage().substring("RANKING_EXISTS_WARNING:".length());
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(warningMessage, HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
+        }
+    }
+
+    /**
+     * Bulk delete dimensions by IDs (with ranking validation)
+     */
+    @DeleteMapping("/bulk-delete")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<?> bulkDeleteDimensions(@RequestBody List<Long> dimensionIds) {
+        try {
+            dimensionService.bulkDeleteDimensions(dimensionIds);
+            return ResponseEntity.ok(ResponseWrapper.success("Dimensions supprimées avec succès"));
         } catch (CustomException e) {
             if (e.getMessage().startsWith("RANKING_EXISTS_WARNING:")) {
                 // Extract the warning message after the prefix

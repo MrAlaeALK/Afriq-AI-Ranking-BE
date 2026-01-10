@@ -151,6 +151,51 @@ public class DimensionService {
     }
 
     /**
+     * Bulk delete dimensions by IDs with ranking validation
+     */
+    @Transactional
+    public void bulkDeleteDimensions(List<Long> dimensionIds) {
+        List<Integer> allAffectedYears = new ArrayList<>();
+        
+        // Check all dimensions first before deleting any
+        for (Long id : dimensionIds) {
+            Dimension dimension = findById(id);
+            
+            // Check if rankings exist for this dimension's year
+            List<Integer> affectedYears = dimension.getWeights().stream()
+                    .map(DimensionWeight::getYear)
+                    .distinct()
+                    .toList();
+            
+            for (Integer year : affectedYears) {
+                List<Rank> rankingsForYear = rankService.findAllByYear(year);
+                if (!rankingsForYear.isEmpty()) {
+                    allAffectedYears.add(year);
+                }
+            }
+        }
+        
+        if (!allAffectedYears.isEmpty()) {
+            String yearsList = allAffectedYears.stream()
+                    .distinct()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "));
+                    
+            throw new CustomException(
+                String.format("Ces dimensions sont utilisées dans les classements %s.", yearsList),
+                HttpStatus.CONFLICT
+            );
+        }
+        
+        // Delete all dimensions if validation passes
+        for (Long id : dimensionIds) {
+            Dimension dimension = findById(id);
+            dimensionRepository.delete(dimension);
+            log.info("Successfully deleted dimension '{}' (ID: {})", dimension.getName(), id);
+        }
+    }
+
+    /**
      * Create a new dimension using DTO - allows same name for different years
      */
     @Transactional
@@ -261,6 +306,48 @@ public class DimensionService {
     @Transactional
     public DimensionResponseDTO updateDimension(Long id, UpdateDimensionDTO updateDimensionDTO) {
         Dimension dimension = findById(id);
+        
+        // Get current weight for the year being updated
+        DimensionWeight currentWeight = dimension.getWeights().stream()
+                .filter(w -> w.getYear().equals(updateDimensionDTO.year()))
+                .findFirst()
+                .orElse(null);
+        Integer currentWeightValue = currentWeight != null ? currentWeight.getDimensionWeight() : null;
+        
+        // Check if anything affecting the ranking actually changes
+        boolean yearChanged = !dimension.getYear().equals(updateDimensionDTO.year());
+        boolean weightChanged = currentWeightValue == null || !updateDimensionDTO.weight().equals(currentWeightValue);
+
+        // Only check rankings if something that affects ranking changes (year and weight)
+        boolean hasRankingAffectingChanges = yearChanged || weightChanged;
+
+        // Only check rankings if ranking-affecting changes occur
+        if (hasRankingAffectingChanges) {
+            // Check if rankings exist for this dimension's years (before update)
+            List<Integer> affectedYears = dimension.getWeights().stream()
+                    .map(DimensionWeight::getYear)
+                    .distinct()
+                    .toList();
+            
+            List<Integer> yearsWithRankings = new ArrayList<>();
+            for (Integer year : affectedYears) {
+                List<Rank> rankingsForYear = rankService.findAllByYear(year);
+                if (!rankingsForYear.isEmpty()) {
+                    yearsWithRankings.add(year);
+                }
+            }
+            
+            if (!yearsWithRankings.isEmpty()) {
+                String yearsList = yearsWithRankings.stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(", "));
+                        
+                throw new CustomException(
+                    String.format("Cette dimension est utilisée dans les classements %s. Veuillez d'abord supprimer les classements associés.", yearsList),
+                    HttpStatus.CONFLICT
+                );
+            }
+        }
         
         // Check if another dimension with same name exists for this year (excluding current dimension)
         Dimension existingDimension = findByNameAndYear(updateDimensionDTO.name(), updateDimensionDTO.year());

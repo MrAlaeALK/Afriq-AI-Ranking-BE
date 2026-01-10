@@ -151,6 +151,13 @@ public class AdminActionsController {
                 .body(ResponseWrapper.success(adminBusinessService.deleteScore(id)));
     }
 
+    @DeleteMapping("/bulk-delete-scores")
+    public ResponseEntity<?> bulkDeleteScores(@RequestBody List<Long> scoreIds){
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseWrapper.success(adminBusinessService.bulkDeleteScores(scoreIds)));
+    }
+
     @PostMapping("/edit-score")
     public ResponseEntity<?> updateScore(@Valid @RequestBody ScoreDTO scoreDTO) {
         return ResponseEntity

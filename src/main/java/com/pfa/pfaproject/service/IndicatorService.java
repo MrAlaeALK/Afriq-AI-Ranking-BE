@@ -277,6 +277,55 @@ public class IndicatorService {
     public IndicatorResponseDTO updateIndicator(Long id, UpdateIndicatorDTO updateDTO) {
         Indicator indicator = findById(id);
 
+        // Get current weight for the year being updated
+        IndicatorWeight currentWeight = indicator.getWeights().stream()
+                .filter(w -> w.getYear().equals(updateDTO.year()))
+                .findFirst()
+                .orElse(null);
+        Integer currentWeightValue = currentWeight != null ? currentWeight.getWeight() : null;
+        
+        // Check if anything affecting the ranking actually changes
+        boolean dimensionChanged = !indicator.getDimension().getId().equals(updateDTO.dimensionId());
+        boolean weightChanged = currentWeightValue == null || !updateDTO.weight().equals(currentWeightValue);
+        // Handle normalizationType comparison (both can be null)
+        boolean normalizationTypeChanged = false;
+        if (updateDTO.normalizationType() != null) {
+            normalizationTypeChanged = !updateDTO.normalizationType().equals(indicator.getNormalizationType());
+        } else if (indicator.getNormalizationType() != null) {
+            normalizationTypeChanged = true; // DTO is null but indicator has a value
+        }
+
+        // Only check rankings if something that affects ranking changes (dimension, weight, normalization type)
+        boolean hasRankingAffectingChanges = dimensionChanged || weightChanged || normalizationTypeChanged;
+
+        // Only check rankings if ranking-affecting changes occur
+        if (hasRankingAffectingChanges) {
+            // Check if rankings exist for any years this indicator has weights for (before update)
+            List<Integer> affectedYears = indicator.getWeights().stream()
+                    .map(IndicatorWeight::getYear)
+                    .distinct()
+                    .toList();
+            
+            List<Integer> yearsWithRankings = new ArrayList<>();
+            for (Integer year : affectedYears) {
+                List<Rank> rankingsForYear = rankService.findAllByYear(year);
+                if (!rankingsForYear.isEmpty()) {
+                    yearsWithRankings.add(year);
+                }
+            }
+            
+            if (!yearsWithRankings.isEmpty()) {
+                String yearsList = yearsWithRankings.stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(", "));
+                        
+                throw new CustomException(
+                    String.format("Cet indicateur est utilisé dans les classements %s. Veuillez d'abord supprimer les classements associés.", yearsList),
+                    HttpStatus.CONFLICT
+                );
+            }
+        }
+
         // Check if new name conflicts with existing indicator for the same dimension and year (excluding current one)
         Indicator existingIndicator = findByName(updateDTO.name());
         if (existingIndicator != null && !existingIndicator.getId().equals(id)) {
@@ -407,29 +456,44 @@ public class IndicatorService {
 
     @Transactional
     public void bulkDeleteIndicators(List<Long> indicatorIds) {
-        // Get affected dimensions and years before deletion for auto-normalization
-        List<Indicator> indicatorsToDelete = indicatorRepository.findAllById(indicatorIds);
+        List<Integer> allAffectedYears = new ArrayList<>();
         
-        // Collect unique dimension/year combinations that will be affected
-        Set<String> dimensionYearCombinations = indicatorsToDelete.stream()
-                .flatMap(indicator -> indicator.getWeights().stream()
-                        .map(weight -> indicator.getDimension().getId() + ":" + weight.getYear()))
-                .collect(Collectors.toSet());
+        // Check all indicators first before deleting any
+        for (Long id : indicatorIds) {
+            Indicator indicator = findById(id);
+            
+            // Check if rankings exist for any years this indicator has weights for
+            List<Integer> affectedYears = indicator.getWeights().stream()
+                    .map(IndicatorWeight::getYear)
+                    .distinct()
+                    .toList();
+            
+            for (Integer year : affectedYears) {
+                List<Rank> rankingsForYear = rankService.findAllByYear(year);
+                if (!rankingsForYear.isEmpty()) {
+                    allAffectedYears.add(year);
+                }
+            }
+        }
         
-        // Delete the indicators
-        indicatorRepository.deleteAllById(indicatorIds);
+        if (!allAffectedYears.isEmpty()) {
+            String yearsList = allAffectedYears.stream()
+                    .distinct()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "));
+                    
+            throw new CustomException(
+                String.format("Ces indicateurs sont utilisés dans les classements %s.", yearsList),
+                HttpStatus.CONFLICT
+            );
+        }
         
-        // Disabled auto-normalization to preserve user-set weights
-        // Auto-normalize weights for each affected dimension/year combination
-        // for (String combination : dimensionYearCombinations) {
-        //     String[] parts = combination.split(":");
-        //     Long dimensionId = Long.parseLong(parts[0]);
-        //     Integer year = Integer.parseInt(parts[1]);
-        //     
-        //     normalizeWeightsForDimensionYear(dimensionId, year);
-        //     log.info("Auto-normalized weights for dimension {} year {} after bulk deleting indicators", 
-        //             dimensionId, year);
-        // }
+        // Delete all indicators if validation passes
+        for (Long id : indicatorIds) {
+            Indicator indicator = findById(id);
+            delete(id);
+            log.info("Successfully deleted indicator '{}' (ID: {})", indicator.getName(), id);
+        }
     }
 
     /**

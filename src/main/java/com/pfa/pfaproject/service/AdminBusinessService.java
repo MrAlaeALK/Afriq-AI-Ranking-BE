@@ -29,9 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -466,6 +468,31 @@ public class AdminBusinessService {
             generateRanking(new YearRequestDTO(score.getYear()));
         }
         return "Le score a été supprimé";
+    }
+
+    public String bulkDeleteScores(List<Long> scoreIds){
+        Set<Integer> affectedYears = new HashSet<>();
+        
+        // Collect all scores and their years before deletion
+        for(Long id : scoreIds){
+            Score score = scoreService.findById(id);
+            affectedYears.add(score.getYear());
+        }
+        
+        // Delete all scores
+        for(Long id : scoreIds){
+            scoreService.delete(id);//exception already handled in score service
+        }
+        
+        // Regenerate rankings for affected years
+        for(Integer year : affectedYears){
+            if(!rankService.findAllByYear(year).isEmpty()){
+                deleteRankingByYear(year);
+                generateRanking(new YearRequestDTO(year));
+            }
+        }
+        
+        return "Les scores ont été supprimés";
     }
 
     public ScoreDTO updateScore(ScoreDTO dto){

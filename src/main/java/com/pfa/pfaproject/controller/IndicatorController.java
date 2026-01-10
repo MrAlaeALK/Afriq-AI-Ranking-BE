@@ -96,9 +96,17 @@ public class IndicatorController {
     public ResponseEntity<?> updateIndicator(
             @PathVariable Long id,
             @Valid @RequestBody UpdateIndicatorDTO updateIndicatorDTO) {
-        IndicatorResponseDTO updatedIndicator = indicatorService.updateIndicator(id, updateIndicatorDTO);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseWrapper.success(updatedIndicator));
+        try {
+            IndicatorResponseDTO updatedIndicator = indicatorService.updateIndicator(id, updateIndicatorDTO);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(ResponseWrapper.success(updatedIndicator));
+        } catch (CustomException e) {
+            if (e.getStatus() == HttpStatus.CONFLICT && e.getMessage().contains("utilisé dans les classements")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(e.getMessage(), HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
+        }
     }
 
     /**
@@ -153,14 +161,24 @@ public class IndicatorController {
     }
 
     /**
-     * Bulk delete indicators.
+     * Bulk delete indicators (with ranking validation).
      */
     @DeleteMapping("/bulk")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> bulkDeleteIndicators(@RequestBody List<Long> indicatorIds) {
-        indicatorService.bulkDeleteIndicators(indicatorIds);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseWrapper.success("Bulk delete completed successfully"));
+        try {
+            indicatorService.bulkDeleteIndicators(indicatorIds);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(ResponseWrapper.success("Indicateurs supprimés avec succès"));
+        } catch (CustomException e) {
+            if (e.getMessage().startsWith("RANKING_EXISTS_WARNING:")) {
+                // Extract the warning message after the prefix
+                String warningMessage = e.getMessage().substring("RANKING_EXISTS_WARNING:".length());
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ResponseWrapper.error(warningMessage, HttpStatus.CONFLICT));
+            }
+            throw e; // Re-throw other exceptions
+        }
     }
 
     /**
